@@ -4,8 +4,12 @@ import kotlinx.coroutines.flow.Flow
 import xyz.targapps.rahel.domain.HealthSnapshot
 
 /**
- * Future integration point for Samsung Health / Health Connect on Galaxy Watch.
+ * Live health snapshots (seed data, sensors, or future Health Connect integration).
  */
 interface HealthDataSource {
     fun liveSnapshots(): Flow<HealthSnapshot>
 }
+
+/** Access sensor telemetry when the repository supports it. */
+fun HealthDataSource.sensorTelemetry(): xyz.targapps.rahel.data.sensors.SensorTelemetrySource? =
+    this as? xyz.targapps.rahel.data.sensors.SensorTelemetrySource

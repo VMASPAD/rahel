@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,9 +27,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Warning
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.ScalingLazyListScope
@@ -39,12 +44,22 @@ import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import xyz.targapps.rahel.R
 import xyz.targapps.rahel.domain.AlertLevel
+import xyz.targapps.rahel.presentation.theme.OnSurfaceMuted
 import xyz.targapps.rahel.presentation.theme.StatusCritical
 import xyz.targapps.rahel.presentation.theme.StatusElevated
 import xyz.targapps.rahel.presentation.theme.StatusNominal
 import xyz.targapps.rahel.presentation.theme.StatusWatch
+import xyz.targapps.rahel.presentation.theme.SurfaceMuted
+import xyz.targapps.rahel.sensor.SensorAvailability
 
-val WearContentPadding = PaddingValues(top = 28.dp, start = 8.dp, end = 8.dp, bottom = 36.dp)
+val WearContentPadding = PaddingValues(top = 28.dp, start = 10.dp, end = 10.dp, bottom = 40.dp)
+
+fun alertColor(level: AlertLevel) = when (level) {
+    AlertLevel.NOMINAL -> StatusNominal
+    AlertLevel.WATCH -> StatusWatch
+    AlertLevel.ELEVATED -> StatusElevated
+    AlertLevel.CRITICAL -> StatusCritical
+}
 
 @Composable
 fun WearScreenFrame(content: @Composable () -> Unit) {
@@ -73,7 +88,7 @@ fun ScreenHeader(title: String, subtitle: String? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp),
+            .padding(bottom = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -92,32 +107,86 @@ fun ScreenHeader(title: String, subtitle: String? = null) {
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
     }
 }
 
 @Composable
+fun SectionTitle(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.caption1,
+        color = MaterialTheme.colors.primary,
+        fontWeight = FontWeight.Medium,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp, bottom = 6.dp, start = 2.dp),
+    )
+}
+
+@Composable
 fun StatusRing(level: AlertLevel, modifier: Modifier = Modifier) {
-    val color = when (level) {
-        AlertLevel.NOMINAL -> StatusNominal
-        AlertLevel.WATCH -> StatusWatch
-        AlertLevel.ELEVATED -> StatusElevated
-        AlertLevel.CRITICAL -> StatusCritical
-    }
+    val color = alertColor(level)
     Box(
         modifier = modifier
-            .size(56.dp)
+            .size(64.dp)
             .clip(CircleShape)
-            .background(color.copy(alpha = 0.25f)),
+            .background(color.copy(alpha = 0.22f)),
         contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(28.dp)
+                .size(32.dp)
                 .clip(CircleShape)
                 .background(color),
+        )
+    }
+}
+
+@Composable
+fun AlertLevelDot(level: AlertLevel, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(10.dp)
+            .clip(CircleShape)
+            .background(alertColor(level)),
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SensorAvailabilityFlow(
+    sensors: List<SensorAvailability>,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        sensors.forEach { sensor ->
+            SensorAvailabilityChip(sensor)
+        }
+    }
+}
+
+@Composable
+fun SensorAvailabilityChip(sensor: SensorAvailability) {
+    val bg = if (sensor.available) StatusNominal.copy(alpha = 0.2f) else SurfaceMuted
+    val labelColor = if (sensor.available) MaterialTheme.colors.onSurface else OnSurfaceMuted
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(bg)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = sensor.displayName,
+            style = MaterialTheme.typography.caption2,
+            color = labelColor,
+            maxLines = 1,
         )
     }
 }
@@ -161,25 +230,39 @@ fun BackChip(onClick: () -> Unit) {
                 modifier = Modifier.size(20.dp),
             )
         },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
     )
 }
 
 @Composable
-fun VitalMetricRow(label: String, value: String) {
+fun VitalMetricRow(
+    label: String,
+    value: String,
+    level: AlertLevel? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 6.dp),
+            .padding(horizontal = 2.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.caption1,
-            color = MaterialTheme.colors.onSurfaceVariant,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.weight(1f),
-        )
+        ) {
+            if (level != null) {
+                AlertLevelDot(level)
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.caption1,
+                color = MaterialTheme.colors.onSurfaceVariant,
+            )
+        }
         Text(
             text = value,
             style = MaterialTheme.typography.body2,
@@ -190,12 +273,77 @@ fun VitalMetricRow(label: String, value: String) {
 }
 
 @Composable
+fun ZScoreRow(
+    label: String,
+    zScore: Float,
+    displayValue: String,
+    level: AlertLevel,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(SurfaceMuted.copy(alpha = 0.65f))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f),
+        ) {
+            AlertLevelDot(level)
+            Column {
+                Text(label, style = MaterialTheme.typography.caption1)
+                Text(
+                    stringResource(R.string.z_score_format, zScore),
+                    style = MaterialTheme.typography.caption2,
+                    color = MaterialTheme.colors.onSurfaceVariant,
+                )
+            }
+        }
+        Text(
+            text = displayValue,
+            style = MaterialTheme.typography.body2,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+fun DashboardPageDots(currentPage: Int, pageCount: Int, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(pageCount) { index ->
+            val active = index == currentPage
+            Box(
+                modifier = Modifier
+                    .size(if (active) 8.dp else 6.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (active) MaterialTheme.colors.primary
+                        else MaterialTheme.colors.onSurfaceVariant.copy(alpha = 0.4f),
+                    ),
+            )
+        }
+    }
+}
+
+@Composable
 fun ListNavChip(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    leadingLevel: AlertLevel? = null,
 ) {
     Chip(
         onClick = onClick,
@@ -205,15 +353,24 @@ fun ListNavChip(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        subtitle,
-                        style = MaterialTheme.typography.caption2,
-                        color = MaterialTheme.colors.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    if (leadingLevel != null) {
+                        AlertLevelDot(leadingLevel)
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            subtitle,
+                            style = MaterialTheme.typography.caption2,
+                            color = MaterialTheme.colors.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 SelectedMarker(visible = selected)
             }
@@ -221,7 +378,7 @@ fun ListNavChip(
         colors = ChipDefaults.chipColors(),
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = 3.dp),
     )
 }
 
@@ -242,4 +399,6 @@ object RaHelIcons {
     val Vitals: ImageVector = Icons.Filled.Favorite
     val Risks: ImageVector = Icons.Filled.Warning
     val Seed: ImageVector = Icons.Filled.Science
+    val Sensors: ImageVector = Icons.Filled.Sensors
+    val Sync: ImageVector = Icons.Filled.CloudUpload
 }

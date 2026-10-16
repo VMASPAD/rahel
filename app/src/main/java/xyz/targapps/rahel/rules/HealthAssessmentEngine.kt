@@ -2,21 +2,230 @@ package xyz.targapps.rahel.rules
 
 import xyz.targapps.rahel.domain.AlertLevel
 import xyz.targapps.rahel.domain.AssessmentResult
+import xyz.targapps.rahel.domain.AstronautBaselineVector
+import xyz.targapps.rahel.domain.BaselineProfileMapper
+import xyz.targapps.rahel.domain.BiologicalSex
 import xyz.targapps.rahel.domain.ConditionAssessment
+import xyz.targapps.rahel.domain.HealthAssessment
+import xyz.targapps.rahel.domain.HealthEventAlert
 import xyz.targapps.rahel.domain.HealthSnapshot
+import xyz.targapps.rahel.domain.MissionDynamicVitals
 import xyz.targapps.rahel.domain.NasaRiskCategory
+import xyz.targapps.rahel.domain.OnboardingProfileInput
+import xyz.targapps.rahel.domain.PhysiologicalMetric
+import xyz.targapps.rahel.domain.ProcessedVitalsSnapshot
 import xyz.targapps.rahel.domain.RecommendedAction
+import xyz.targapps.rahel.domain.SensorSample
+import xyz.targapps.rahel.domain.SpaceCardioEventId
 import xyz.targapps.rahel.domain.Symptom
 import xyz.targapps.rahel.domain.SymptomSeverity
+import xyz.targapps.rahel.domain.ZScoreBand
+import xyz.targapps.rahel.domain.ZScoreEvaluation
 
 /**
- * Rule-based assessment aligned with NASA HRP risk themes.
+ * Rule-based assessment aligned with NASA HRP risk themes and datos.md cardiovascular module.
  * Threshold constants: [SpaceHealthThresholds]; citations: project docs/SOURCES.md.
  * Not for clinical use or flight certification.
  */
-class HealthAssessmentEngine {
+class HealthAssessmentEngine(
+    private val ecgProvider: EcgAnomalyProvider = DefaultHealthProviders.ecg,
+    private val radiationProvider: SolarRadiationFluxProvider = DefaultHealthProviders.radiation,
+    private val co2Provider: CabinCo2Provider = DefaultHealthProviders.co2,
+    private val crewScheduleProvider: CrewScheduleProvider = DefaultHealthProviders.crewSchedule,
+    private val sensorProcessor: SensorStreamProcessor = SensorStreamProcessor(),
+) {
 
-    fun assess(current: HealthSnapshot, history: List<HealthSnapshot>): AssessmentResult {
+    private var astronautBaseline: AstronautBaselineVector? = null
+    private var wellnessReminderFlags = MissionWellnessRules.ReminderFlags()
+
+    fun resetWellnessState() {
+        wellnessReminderFlags = MissionWellnessRules.ReminderFlags()
+    }
+
+    fun setBaselineFromOnboarding(input: OnboardingProfileInput) {
+        astronautBaseline = BaselineProfileMapper.fromOnboarding(input)
+    }
+
+    fun setBaselineVector(vector: AstronautBaselineVector) {
+        astronautBaseline = vector
+    }
+
+    fun ingestSensorSample(sample: SensorSample): ProcessedVitalsSnapshot =
+        sensorProcessor.ingest(sample)
+
+    fun assess(current: HealthSnapshot, history: List<HealthSnapshot>): AssessmentResult =
+        assessHealth(current, history).legacyAssessment
+
+    fun assessHealth(
+        current: HealthSnapshot,
+        history: List<HealthSnapshot>,
+        processedOverride: ProcessedVitalsSnapshot? = null,
+        missionDynamics: MissionDynamicVitals? = null,
+    ): HealthAssessment {
+        val baseline = resolveBaseline(current)
+        val dynamic = BaselineStatistics.dynamicBaselines(baseline)
+        val v = current.vitals
+
+        val processed = processedOverride ?: sensorProcessor.snapshotFromInstant(
+            heartRateBpm = v.heartRateBpm,
+            hrvMs = v.hrvMs,
+            spO2Percent = v.spO2Percent,
+            skinTempCelsius = v.skinTempCelsius,
+            timestampMillis = current.timestamp.toEpochMilli(),
+        )
+
+        val hrvMeasured = if (processed.hrv7dMeanMs > 0) processed.hrv7dMeanMs else v.hrvMs
+        val zScores = listOf(
+            ZScoreEvaluator.evaluate(
+                PhysiologicalMetric.RESTING_HEART_RATE,
+                processed.hrRestingSmoothedBpm.toDouble(),
+                dynamic.restingHeartRate,
+            ),
+            ZScoreEvaluator.evaluate(
+                PhysiologicalMetric.HRV_7D_MEAN,
+                hrvMeasured.toDouble(),
+                dynamic.hrv7d,
+            ),
+            ZScoreEvaluator.evaluate(
+                PhysiologicalMetric.SPO2,
+                v.spO2Percent.toDouble(),
+                dynamic.spO2,
+            ),
+            ZScoreEvaluator.evaluate(
+                PhysiologicalMetric.SKIN_TEMPERATURE,
+                v.skinTempCelsius.toDouble(),
+                dynamic.skinTemperature,
+            ),
+        )
+
+        val providerFlux = radiationProvider.protonFluxPfu()
+        val radiationFlux = when {
+            providerFlux > 0.0 -> providerFlux
+            current.mission.solarRadiationFluxPfu != null -> current.mission.solarRadiationFluxPfu
+            else -> 0.0
+        }
+        val co2Ppm = current.mission.cabinCo2Ppm ?: co2Provider.co2Ppm()
+        val crewSchedule = current.mission.crewScheduleWork.takeIf { it in 0..1 }
+            ?: crewScheduleProvider.crewScheduleWork()
+
+        val ecgAnomaly = when (missionDynamics?.ecgFlag) {
+            true -> true
+            false -> false
+            null -> ecgProvider.ecgAnomalyDetected()
+        }
+
+        val eventAlerts = SpaceCardiovascularRules.evaluate(
+            baseline = baseline,
+            processed = processed,
+            zScores = zScores,
+            ecgAnomaly = ecgAnomaly,
+            radiationFluxPfu = radiationFlux,
+            co2Ppm = co2Ppm,
+            spo2Percent = v.spO2Percent,
+            skinTempCelsius = v.skinTempCelsius,
+        ) + MissionWellnessRules.evaluate(
+            mission = current.mission.copy(crewScheduleWork = crewSchedule),
+            vitals = v,
+            flags = wellnessReminderFlags,
+        )
+
+        val legacyCore = buildLegacyAssessment(current, history)
+        val merged = mergeSpaceIntoLegacy(legacyCore, zScores, eventAlerts)
+
+        return HealthAssessment(
+            timestamp = current.timestamp,
+            crewMemberId = current.crewMemberId,
+            baseRiskIndex = BaselineStatistics.baseRiskIndex(baseline),
+            zScores = zScores,
+            eventAlerts = eventAlerts,
+            processedVitals = processed,
+            legacyAssessment = merged,
+        )
+    }
+
+    private fun resolveBaseline(current: HealthSnapshot): AstronautBaselineVector {
+        return astronautBaseline ?: BaselineProfileMapper.fromOnboarding(
+            OnboardingProfileInput(
+                biologicalSex = BiologicalSex.MALE,
+                weightKg = 75f,
+                heightCm = 175f,
+                restingHeartRateBpm = current.vitals.restingHeartRateBpm.toFloat(),
+                hrvBaselineMs = current.vitals.hrvMs.toFloat(),
+            ),
+        )
+    }
+
+    private fun mergeSpaceIntoLegacy(
+        legacy: AssessmentResult,
+        zScores: List<ZScoreEvaluation>,
+        events: List<HealthEventAlert>,
+    ): AssessmentResult {
+        val zConditions = zScores
+            .filter { it.band != ZScoreBand.NORMAL }
+            .map { z ->
+                val severity = when (z.band) {
+                    ZScoreBand.YELLOW -> AlertLevel.WATCH
+                    ZScoreBand.RED -> AlertLevel.ELEVATED
+                    ZScoreBand.NORMAL -> AlertLevel.NOMINAL
+                }
+                ConditionAssessment(
+                    conditionId = "z_${z.metric.name.lowercase()}",
+                    title = "Desviación Z: ${z.metric.name}",
+                    category = NasaRiskCategory.CARDIO,
+                    summary = "Z=${"%.2f".format(z.zScore)} vs línea base personal (μ=${"%.1f".format(z.muBase)}, σ=${"%.1f".format(z.sigmaBase)}).",
+                    confidence = 0.7f,
+                    severity = severity,
+                    symptoms = emptyList(),
+                    recommendedActions = listOf(
+                        RecommendedAction(
+                            "trend",
+                            "Seguimiento",
+                            "Registrar contexto (sueño, ejercicio, hidratación) y repetir medición en reposo.",
+                        ),
+                    ),
+                )
+            }
+
+        val eventConditions = events.map { event ->
+            ConditionAssessment(
+                conditionId = "space_${event.eventId.name.lowercase()}",
+                title = event.title,
+                category = categoryForSpaceEvent(event.eventId),
+                summary = event.message,
+                confidence = 0.85f,
+                severity = event.level,
+                symptoms = listOf(
+                    Symptom(event.eventId.name.lowercase(), event.title, SymptomSeverity.MODERATE),
+                ),
+                recommendedActions = listOf(
+                    RecommendedAction(
+                        event.eventId.name.lowercase(),
+                        "Protocolo",
+                        event.suggestedAction,
+                    ),
+                ),
+            )
+        }
+
+        val conditions = (legacy.conditions + zConditions + eventConditions)
+            .sortedByDescending { severityRank(it.severity) }
+
+        val overallRank = conditions.maxOfOrNull { severityRank(it.severity) } ?: 0
+        val overall = rankToLevel(overallRank)
+        val headline = when (overall) {
+            AlertLevel.NOMINAL -> legacy.headline
+            AlertLevel.WATCH -> "Vigilar tendencias"
+            AlertLevel.ELEVATED -> "Atención recomendada"
+            AlertLevel.CRITICAL -> "Acción prioritaria"
+        }
+
+        return legacy.copy(overallLevel = maxLevel(legacy.overallLevel, overall), headline = headline, conditions = conditions)
+    }
+
+    private fun maxLevel(a: AlertLevel, b: AlertLevel): AlertLevel =
+        if (severityRank(a) >= severityRank(b)) a else b
+
+    private fun buildLegacyAssessment(current: HealthSnapshot, history: List<HealthSnapshot>): AssessmentResult {
         val conditions = buildList {
             addAll(behavioralRules(current))
             addAll(cardioRules(current, history))
@@ -26,14 +235,8 @@ class HealthAssessmentEngine {
             addAll(environmentRules(current))
         }.sortedByDescending { severityRank(it.severity) }
 
-        val overall = conditions.maxOfOrNull { severityRank(it.severity) }?.let { rank ->
-            when (rank) {
-                3 -> AlertLevel.CRITICAL
-                2 -> AlertLevel.ELEVATED
-                1 -> AlertLevel.WATCH
-                else -> AlertLevel.NOMINAL
-            }
-        } ?: AlertLevel.NOMINAL
+        val overall = conditions.maxOfOrNull { severityRank(it.severity) }?.let { rankToLevel(it) }
+            ?: AlertLevel.NOMINAL
 
         val headline = when (overall) {
             AlertLevel.NOMINAL -> "Estado nominal"
@@ -45,11 +248,29 @@ class HealthAssessmentEngine {
         return AssessmentResult(overallLevel = overall, headline = headline, conditions = conditions)
     }
 
+    private fun categoryForSpaceEvent(id: SpaceCardioEventId): NasaRiskCategory =
+        when (id) {
+            SpaceCardioEventId.HYDRATION_REMINDER,
+            SpaceCardioEventId.CALCIUM_REMINDER,
+            -> NasaRiskCategory.BONE
+            SpaceCardioEventId.INACTIVITY_REMINDER,
+            SpaceCardioEventId.REST_LIGHT_DISRUPTION,
+            -> NasaRiskCategory.BEHAVIORAL
+            else -> NasaRiskCategory.CARDIO
+        }
+
     private fun severityRank(level: AlertLevel): Int = when (level) {
         AlertLevel.NOMINAL -> 0
         AlertLevel.WATCH -> 1
         AlertLevel.ELEVATED -> 2
         AlertLevel.CRITICAL -> 3
+    }
+
+    private fun rankToLevel(rank: Int): AlertLevel = when (rank) {
+        3 -> AlertLevel.CRITICAL
+        2 -> AlertLevel.ELEVATED
+        1 -> AlertLevel.WATCH
+        else -> AlertLevel.NOMINAL
     }
 
     private fun behavioralRules(s: HealthSnapshot): List<ConditionAssessment> {
