@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">RaHel</string>
+    <string name="hello_world">From the Square world,\nHello, %1$s!</string>
+    <string name="tile_label">RaHel estado</string>
+    <string name="complication_label">RaHel alerta</string>
+
+    <string name="status_loading">Cargando…</string>
+    <string name="home_mission_line">Día misión %1$d · %2$s</string>
+    <string name="nav_vitals">Vitals</string>
+    <string name="nav_risks">Riesgos</string>
+    <string name="nav_seed">Demo SEED</string>
+    <string name="action_back">Volver</string>
+    <string name="cd_selected">Seleccionado</string>
+
+    <string name="screen_vitals">Signos vitales</string>
+    <string name="screen_assessment">Evaluación</string>
+    <string name="screen_detail">Detalle</string>
+    <string name="screen_seed">Perfil SEED</string>
+    <string name="assessment_empty">Sin condiciones detectadas en este perfil.</string>
+    <string name="section_symptoms">Síntomas</string>
+    <string name="section_actions">Acciones</string>
+    <string name="bullet_item">— %1$s</string>
+    <string name="action_item">%1$s: %2$s</string>
+
+    <string name="vital_hr">FC</string>
+    <string name="vital_resting_hr">FC reposo</string>
+    <string name="vital_hrv">HRV</string>
+    <string name="vital_spo2">SpO₂</string>
+    <string name="vital_steps">Pasos</string>
+    <string name="vital_sleep">Sueño</string>
+    <string name="vital_stress">Estrés</string>
+    <string name="vital_skin_temp">Temp. piel</string>
+</resources>
