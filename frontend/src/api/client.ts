@@ -1,4 +1,4 @@
-const base = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+const base = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8080' : '')
 
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${base}${path}`)

@@ -1,0 +1,10 @@
+**/.git
+**/.agent-logs
+**/node_modules
+**/dist
+**/.gradle
+**/build
+app/
+*.md
+!backend/README.md
+!frontend/README.md

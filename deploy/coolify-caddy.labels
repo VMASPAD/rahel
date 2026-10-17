@@ -1,0 +1,19 @@
+# Coolify / Caddy — alternativa a Traefik (mismo contenedor puerto 80)
+
+caddy_0=https://rahel.hermesbackend.xyz
+caddy_0.encode=zstd gzip
+caddy_0.header=-Server
+caddy_ingress_network=coolify
+
+# API + ingesta reloj (nginx en el contenedor enruta a Node :8080)
+caddy_0.handle_path.0_reverse_proxy={{upstreams 80}}
+caddy_0.handle_path=/api/*
+caddy_0.handle_path.1_reverse_proxy={{upstreams 80}}
+caddy_0.handle_path.1=/profile*
+caddy_0.handle_path.2_reverse_proxy={{upstreams 80}}
+caddy_0.handle_path.2=/telemetry/*
+
+# Frontend (SPA)
+caddy_0.handle_path.3_reverse_proxy={{upstreams 80}}
+caddy_0.handle_path.3=/*
+caddy_0.try_files={path} /index.html
