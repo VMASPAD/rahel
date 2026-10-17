@@ -1,0 +1,102 @@
+.crew-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.crew-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #263238;
+  border-radius: 8px;
+  background: #12181f;
+  color: #eceff1;
+  cursor: pointer;
+  margin-bottom: 0.35rem;
+}
+
+.crew-btn.active {
+  border-color: #64b5f6;
+}
+
+.crew-id {
+  font-weight: 600;
+}
+
+.crew-headline {
+  font-size: 0.8rem;
+  color: #90a4ae;
+  margin: 0 0 0.75rem 0.25rem;
+}
+
+.badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.badge.nominal { background: #1b5e20; color: #c8e6c9; }
+.badge.watch { background: #f57f17; color: #fff8e1; }
+.badge.elevated { background: #e65100; color: #ffe0b2; }
+.badge.critical { background: #b71c1c; color: #ffcdd2; }
+.badge.unknown { background: #37474f; color: #cfd8dc; }
+
+.vitals {
+  margin: 0;
+}
+
+.vital-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #1e2830;
+}
+
+.vital-row dt {
+  color: #90a4ae;
+  font-size: 0.85rem;
+}
+
+.vital-row dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.assessment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.assessment h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.disclaimer {
+  font-size: 0.75rem;
+  color: #78909c;
+}
+
+.conditions {
+  padding-left: 1rem;
+  margin: 0.5rem 0 0;
+}
+
+.cond-meta {
+  display: block;
+  font-size: 0.75rem;
+  color: #64b5f6;
+}
+
+.muted {
+  color: #78909c;
+  margin: 0;
+}

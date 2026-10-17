@@ -1,0 +1,162 @@
+{
+  "profiles": [
+    {
+      "crewMemberId": "CMD-01",
+      "imc": 23.5,
+      "pesoKg": 78,
+      "alturaM": 1.82,
+      "snapshotAtEpochMs": 1730000000000
+    },
+    {
+      "crewMemberId": "FLT-02",
+      "imc": 21.2,
+      "pesoKg": 62,
+      "alturaM": 1.71,
+      "snapshotAtEpochMs": 1730000100000
+    },
+    {
+      "crewMemberId": "MS-03",
+      "imc": 24.8,
+      "pesoKg": 71,
+      "alturaM": 1.69,
+      "snapshotAtEpochMs": 1730000200000
+    }
+  ],
+  "batches": [
+    {
+      "crewMemberId": "CMD-01",
+      "clientBatchId": "seed-cmd-1",
+      "readings": [
+        {
+          "recordedAtEpochMs": 1730100000000,
+          "heartRateBpm": 72,
+          "restingHeartRateBpm": 58,
+          "hrvMs": 48,
+          "spO2Percent": 97,
+          "stepsToday": 8200,
+          "sleepHoursLastNight": 7.2,
+          "skinTempCelsius": 36.4,
+          "stressScore": 28,
+          "missionDay": 45,
+          "microgravity": true,
+          "isolationIndex": 0.35,
+          "radiationDoseMilliSvProxy": 12,
+          "selfReportedSymptoms": []
+        }
+      ],
+      "assessments": [
+        {
+          "assessedAtEpochMs": 1730100001000,
+          "overallLevel": "NOMINAL",
+          "headline": "Estado nominal",
+          "disclaimer": "Prototipo educativo",
+          "conditions": []
+        }
+      ]
+    },
+    {
+      "crewMemberId": "FLT-02",
+      "clientBatchId": "seed-flt-1",
+      "readings": [
+        {
+          "recordedAtEpochMs": 1730101000000,
+          "heartRateBpm": 88,
+          "restingHeartRateBpm": 70,
+          "hrvMs": 22,
+          "spO2Percent": 97,
+          "stepsToday": 4500,
+          "sleepHoursLastNight": 4.1,
+          "skinTempCelsius": 36.6,
+          "stressScore": 78,
+          "missionDay": 80,
+          "microgravity": true,
+          "isolationIndex": 0.72,
+          "radiationDoseMilliSvProxy": 18,
+          "selfReportedSymptoms": [
+            { "id": "irritability", "label": "Irritabilidad", "severity": "MODERATE" }
+          ]
+        }
+      ],
+      "assessments": [
+        {
+          "assessedAtEpochMs": 1730101001000,
+          "overallLevel": "WATCH",
+          "headline": "Vigilar tendencias",
+          "disclaimer": "Prototipo educativo",
+          "conditions": [
+            {
+              "conditionId": "behavioral_stress",
+              "title": "Salud conductual / sueño",
+              "category": "BEHAVIORAL",
+              "summary": "Sueño insuficiente y estrés elevado.",
+              "confidence": 0.72,
+              "severity": "WATCH",
+              "symptoms": [
+                { "id": "poor_sleep", "label": "Sueño insuficiente", "severity": "MODERATE" }
+              ],
+              "recommendedActions": [
+                {
+                  "id": "sleep_hygiene",
+                  "title": "Higiene del sueño",
+                  "detail": "Ventana oscura 8h."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "crewMemberId": "MS-03",
+      "clientBatchId": "seed-ms-1",
+      "readings": [
+        {
+          "recordedAtEpochMs": 1730102000000,
+          "heartRateBpm": 102,
+          "restingHeartRateBpm": 78,
+          "hrvMs": 30,
+          "spO2Percent": 94,
+          "stepsToday": 2100,
+          "sleepHoursLastNight": 5.8,
+          "skinTempCelsius": 36.5,
+          "stressScore": 55,
+          "missionDay": 200,
+          "microgravity": true,
+          "isolationIndex": 0.45,
+          "radiationDoseMilliSvProxy": 35,
+          "selfReportedSymptoms": [
+            { "id": "bone_ache", "label": "Molestia muscular", "severity": "MILD" }
+          ]
+        }
+      ],
+      "assessments": [
+        {
+          "assessedAtEpochMs": 1730102001000,
+          "overallLevel": "ELEVATED",
+          "headline": "Atención recomendada",
+          "disclaimer": "Prototipo educativo",
+          "conditions": [
+            {
+              "conditionId": "bone_loading",
+              "title": "Carga ósea insuficiente",
+              "category": "BONE",
+              "summary": "Baja actividad mecánica en misión larga.",
+              "confidence": 0.61,
+              "severity": "ELEVATED",
+              "symptoms": [
+                { "id": "low_activity", "label": "Actividad baja", "severity": "MILD" }
+              ],
+              "recommendedActions": [
+                {
+                  "id": "resistance",
+                  "title": "Resistencia",
+                  "detail": "Sesión ARED hoy."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

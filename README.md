@@ -1,11 +1,11 @@
 # rahel
 
-Monitor de salud para **Wear OS** (hackathon NASA): vitales desde el reloj, evaluación de riesgos inspirada en HRP y perfiles **SEED** para demo sin sensores reales.
+Monorepo **RaHel** — monitoreo de salud para astronautas (hackathon NASA).
 
-## Ejecutar
+| Carpeta | Descripción |
+|---------|-------------|
+| [`app/`](app/) | Wear OS (Gradle). Abrir esta carpeta en Android Studio. |
+| [`backend/`](backend/) | API Express + TypeScript (`npm run dev`, puerto 3001). |
+| [`frontend/`](frontend/) | Web Vite + React + TypeScript (`npm run dev`). |
 
-Abre el proyecto en Android Studio, emulador o dispositivo Wear OS (API 30+), y ejecuta la app.
-
-Documentación: `docs/HACKATHON_PITCH.md`, `docs/SOURCES.md`, `docs/UI_NOTES.md`.
-
-API base URL: `BuildConfig.API_BASE_URL` (debug default `http://10.0.2.2:8080/`, override via `API_BASE_URL` in `local.properties`).
+Documentación del wearable: `app/docs/`.
