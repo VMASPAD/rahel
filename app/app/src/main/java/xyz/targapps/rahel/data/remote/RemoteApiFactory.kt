@@ -36,6 +36,9 @@ object RemoteApiFactory {
     ): PairingApiService = createRetrofit(baseUrl, enableLogging, null)
         .create(PairingApiService::class.java)
 
+    /** Gson used for request bodies; explicit nulls. Shared so tests serialize exactly like production. */
+    fun apiGson(): com.google.gson.Gson = GsonBuilder().serializeNulls().create()
+
     private fun createRetrofit(
         baseUrl: String,
         enableLogging: Boolean,
@@ -76,7 +79,7 @@ object RemoteApiFactory {
             .baseUrl(baseUrl)
             .client(clientBuilder.build())
             // Explicit nulls: unmeasured vitals are sent as null (never 0).
-            .addConverterFactory(GsonConverterFactory.create(GsonBuilder().serializeNulls().create()))
+            .addConverterFactory(GsonConverterFactory.create(apiGson()))
             .build()
     }
 }

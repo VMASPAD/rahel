@@ -26,6 +26,16 @@
     <string name="sync_pending">Pending</string>
     <string name="sync_action">Sync now</string>
     <string name="sync_in_progress">Syncing…</string>
+    <string name="sync_auto_on">Auto-sync on</string>
+    <string name="sync_auto_off">Auto-sync off</string>
+    <string name="sync_linked_as">Linked · %1$s</string>
+    <string name="sync_link_to_upload">Link your watch to upload data</string>
+    <string name="link_title">Link account</string>
+    <string name="link_title_compact">Link to web</string>
+    <string name="link_enter_code_hint">Enter this code on the web to link your watch</string>
+    <string name="link_backup_code">Backup %1$s</string>
+    <string name="link_auto_renews">Connected · auto-renews</string>
+    <string name="app_version_label">RaHel v%1$s (%2$d)</string>
     <string name="monitoring_start">Start monitoring</string>
     <string name="monitoring_stop">Stop monitoring</string>
     <string name="monitoring_status_on">Monitoring is on</string>

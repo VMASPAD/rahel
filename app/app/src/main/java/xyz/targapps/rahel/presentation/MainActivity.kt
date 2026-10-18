@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import xyz.targapps.rahel.RaHelApp
+import xyz.targapps.rahel.data.sensors.BodySensorPermissions
 import xyz.targapps.rahel.service.HealthForegroundService
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,7 +28,7 @@ import xyz.targapps.rahel.presentation.pairing.PairingViewModel
 class MainActivity : ComponentActivity() {
 
     private val sensorPermissions = buildList {
-        add(Manifest.permission.BODY_SENSORS)
+        addAll(BodySensorPermissions.toRequest())
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             add(Manifest.permission.ACTIVITY_RECOGNITION)
         }
@@ -44,6 +45,15 @@ class MainActivity : ComponentActivity() {
             it.ensureSensorCollection()
             if (it.collectionEnabled.value) HealthForegroundService.start(this)
         }
+        requestBackgroundHealthAccessIfNeeded()
+    }
+
+    private var backgroundPermissionRequested = false
+
+    private val backgroundPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        (application as RaHelApp).ensureSensorCollection()
     }
 
     private val onboardingViewModel: OnboardingViewModel by viewModels {
@@ -110,6 +120,18 @@ class MainActivity : ComponentActivity() {
         }
         if (missing.isNotEmpty()) {
             permissionLauncher.launch(missing.toTypedArray())
+        } else {
+            requestBackgroundHealthAccessIfNeeded()
         }
+    }
+
+    /** Wear OS 6 / Android 16: reading vitals with the screen off needs a separate, second request. */
+    private fun requestBackgroundHealthAccessIfNeeded() {
+        val permission = BodySensorPermissions.backgroundPermission() ?: return
+        if (backgroundPermissionRequested) return
+        if (!BodySensorPermissions.isHeartRateGranted(this)) return
+        if (BodySensorPermissions.isGranted(this, permission)) return
+        backgroundPermissionRequested = true
+        backgroundPermissionLauncher.launch(permission)
     }
 }

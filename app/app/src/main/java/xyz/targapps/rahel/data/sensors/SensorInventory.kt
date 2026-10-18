@@ -28,7 +28,7 @@ internal object SensorInventory {
     }
 
     private fun requiredPermission(type: Int): String? = when (type) {
-        Sensor.TYPE_HEART_RATE, Sensor.TYPE_HEART_BEAT -> Manifest.permission.BODY_SENSORS
+        Sensor.TYPE_HEART_RATE, Sensor.TYPE_HEART_BEAT -> BodySensorPermissions.heartRate
         Sensor.TYPE_STEP_COUNTER, Sensor.TYPE_STEP_DETECTOR -> Manifest.permission.ACTIVITY_RECOGNITION
         else -> null
     }
@@ -71,7 +71,7 @@ internal object SensorInventory {
             )
         }
 
-        val bodyGranted = granted(Manifest.permission.BODY_SENSORS)
+        val bodyGranted = granted(BodySensorPermissions.heartRate)
         fun healthServices(key: String, typeName: String, name: String, channel: SensorChannelId) {
             val available = availability[channel]?.state == SensorAvailabilityState.AVAILABLE
             val last = lastEventAt[key]

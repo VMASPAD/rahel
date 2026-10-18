@@ -1,6 +1,5 @@
 package xyz.targapps.rahel.presentation
 
-import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -54,11 +53,9 @@ class HealthMonitorViewModel(
         /** Live UI refresh period (nothing is persisted or uploaded at this rate). */
         const val UI_REFRESH_INTERVAL_MS = 1_000L
 
-        /** Minimum period between samples persisted to the upload queue. */
-        const val RECORD_INTERVAL_MS = 30_000L
+        // Recording to the upload queue lives in TelemetryRecorder (application scope), not here.
     }
 
-    private var lastRecordedAtMs: Long = -RECORD_INTERVAL_MS
 
     private var latestProcessedVitals: ProcessedVitalsSnapshot? = null
     private var latestMissionDynamics: MissionDynamicVitals? = null
@@ -142,13 +139,6 @@ class HealthMonitorViewModel(
             )
             healthAssessment = full
             assessment = full.legacyAssessment
-            val now = SystemClock.elapsedRealtime()
-            if (now - lastRecordedAtMs >= RECORD_INTERVAL_MS) {
-                // Only advances the timer when a valid sample (real HR, on wrist, paired) was queued.
-                if (repository.recordAssessmentCycle(snap, full)) {
-                    lastRecordedAtMs = now
-                }
-            }
             syncRepository.refreshStatus()
         } catch (e: CancellationException) {
             throw e

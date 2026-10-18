@@ -2,4 +2,7 @@
 <resources>
     <color name="rahel_green">#007A39</color>
     <color name="rahel_pink">#FFE5E7</color>
+    <color name="rahel_forest">#04281A</color>
+    <color name="rahel_mint">#5EE0A0</color>
+    <color name="rahel_mint_light">#A8EBC8</color>
 </resources>

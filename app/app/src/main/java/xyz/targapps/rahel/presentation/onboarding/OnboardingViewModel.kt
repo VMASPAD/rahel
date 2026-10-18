@@ -33,7 +33,7 @@ class OnboardingViewModel(
     private val healthRepository: HealthRepository,
 ) : ViewModel() {
 
-    var step by mutableStateOf(OnboardingStep.Welcome)
+    var step by mutableStateOf(OnboardingStep.Sexo)
         private set
 
     var sexoBiologico by mutableIntStateOf(SexoBiologico.MASCULINO)
@@ -78,7 +78,7 @@ class OnboardingViewModel(
     fun back() {
         step = when (step) {
             OnboardingStep.Welcome -> OnboardingStep.Welcome
-            OnboardingStep.Sexo -> OnboardingStep.Welcome
+            OnboardingStep.Sexo -> OnboardingStep.Sexo
             OnboardingStep.Peso -> OnboardingStep.Sexo
             OnboardingStep.Altura -> OnboardingStep.Peso
             OnboardingStep.Confirm -> OnboardingStep.Altura

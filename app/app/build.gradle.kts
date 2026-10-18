@@ -51,8 +51,8 @@ android {
         applicationId = "xyz.targapps.rahel"
         minSdk = 30
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.0.4"
+        versionCode = 14
+        versionName = "1.0.13"
 
         // Release URL; debug overrides in buildTypes.debug (see resolveDebugApiBaseUrl).
         buildConfigField("String", "API_BASE_URL", "\"https://rahel.hermesbackend.xyz/api/\"")
@@ -97,6 +97,9 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
     useLibrary("wear-sdk")
     buildFeatures {
         compose = true
@@ -135,6 +138,7 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
     implementation(libs.work.runtime.ktx)
+    testImplementation("junit:junit:4.13.2")
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.ui.test.junit4)
     debugImplementation(libs.ui.tooling)

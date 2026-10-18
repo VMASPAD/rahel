@@ -1,6 +1,7 @@
 package xyz.targapps.rahel.presentation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -22,6 +23,7 @@ import androidx.wear.compose.material.Text
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.distinctUntilChanged
+import xyz.targapps.rahel.BuildConfig
 import xyz.targapps.rahel.R
 import xyz.targapps.rahel.domain.AlertLevel
 import xyz.targapps.rahel.domain.ConditionAssessment
@@ -105,7 +107,7 @@ private fun DashboardHost(
                 DashboardPage.Overview -> OverviewPage(vm, monitoringEnabled, onSetMonitoring)
                 DashboardPage.Sensors -> SensorsPage(vm)
                 DashboardPage.Alerts -> AlertsPage(vm)
-                DashboardPage.Sync -> SyncPage(vm, pairingViewModel)
+                DashboardPage.Sync -> SyncPage(vm, pairingViewModel, monitoringEnabled)
             }
         }
         DashboardPageDots(
@@ -231,33 +233,31 @@ private fun OverviewPage(
 
 @Composable
 private fun LiveVitalsBlock(metrics: LiveSensorMetrics) {
+    val none = "--"
     val motionText = metrics.motionLabel?.let { label ->
-        metrics.motionMagnitude?.let { mag ->
-            "$label (${(mag * 100).toInt()}%)"
-        } ?: label
-    } ?: "—"
-    VitalMetricRow(
-        label = stringResource(R.string.vital_hr),
-        value = metrics.heartRateBpm?.let { "$it bpm" } ?: "—",
-    )
-    metrics.spO2Percent?.let { spo2 ->
+        metrics.motionMagnitude?.let { mag -> "$label ${(mag * 100).toInt()}%" } ?: label
+    } ?: none
+    // Un solo item de ScalingLazyColumn: sus hijos se apilan, asi que van en un Column.
+    Column(modifier = Modifier.fillMaxWidth()) {
+        VitalMetricRow(
+            label = stringResource(R.string.vital_hr),
+            value = metrics.heartRateBpm?.let { "$it bpm" } ?: none,
+        )
         VitalMetricRow(
             label = stringResource(R.string.vital_spo2),
-            value = "$spo2%",
+            value = metrics.spO2Percent?.let { "$it%" } ?: none,
         )
-    }
-    VitalMetricRow(
-        label = stringResource(R.string.vital_motion),
-        value = motionText,
-    )
-    VitalMetricRow(
-        label = stringResource(R.string.vital_steps),
-        value = metrics.stepsToday?.toString() ?: "—",
-    )
-    metrics.pressureHpa?.let { pressure ->
+        VitalMetricRow(
+            label = stringResource(R.string.vital_motion),
+            value = motionText,
+        )
+        VitalMetricRow(
+            label = stringResource(R.string.vital_steps),
+            value = metrics.stepsToday?.let { "$it steps" } ?: none,
+        )
         VitalMetricRow(
             label = stringResource(R.string.vital_barometer),
-            value = "${pressure.toInt()} hPa",
+            value = metrics.pressureHpa?.let { "${it.toInt()} hPa" } ?: none,
         )
     }
 }
@@ -345,55 +345,109 @@ private fun AlertsPage(vm: HealthMonitorViewModel) {
 }
 
 @Composable
-private fun SyncPage(vm: HealthMonitorViewModel, pairingViewModel: PairingViewModel) {
+private fun SyncPage(
+    vm: HealthMonitorViewModel,
+    pairingViewModel: PairingViewModel,
+    monitoringEnabled: Boolean,
+) {
     val sync by vm.syncStatus.collectAsState()
+    val pairing by pairingViewModel.pairingState.collectAsState()
+    val paired = pairing?.isPaired == true
 
     WearScrollScreen(horizontalAlignment = Alignment.Start) {
         item { ScreenHeader(title = stringResource(R.string.page_sync)) }
-        item {
-            VitalMetricRow(
-                label = stringResource(R.string.sync_last_upload),
-                value = sync.lastUploadAt?.let { syncTimeFormatter.format(it) }
-                    ?: stringResource(R.string.sync_never),
-            )
-        }
-        item {
-            VitalMetricRow(
-                label = stringResource(R.string.sync_pending),
-                value = sync.pendingCount.toString(),
-                level = when {
-                    sync.pendingCount == 0 -> AlertLevel.NOMINAL
-                    sync.pendingCount < 5 -> AlertLevel.WATCH
-                    else -> AlertLevel.ELEVATED
-                },
-            )
-        }
-        item {
-            NavCompactChip(
-                label = if (sync.isSyncing) {
-                    stringResource(R.string.sync_in_progress)
-                } else {
-                    stringResource(R.string.sync_action)
-                },
-                icon = RaHelIcons.Sync,
-                onClick = { if (!sync.isSyncing) vm.triggerSync() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp),
-            )
-        }
-        sync.lastError?.let { err ->
+        if (pairing == null) {
+            // Pairing state still loading: show nothing link-related yet.
+        } else if (!paired) {
+            if (monitoringEnabled) {
+                item {
+                    Text(
+                        text = stringResource(R.string.sync_link_to_upload),
+                        style = MaterialTheme.typography.caption2,
+                        color = MaterialTheme.colors.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
+            }
+            item {
+                LinkCodesBlock(viewModel = pairingViewModel, compact = true)
+            }
+        } else {
             item {
                 Text(
-                    text = err,
+                    text = stringResource(R.string.sync_linked_as, pairing?.crewMemberId.orEmpty()),
                     style = MaterialTheme.typography.caption2,
-                    color = MaterialTheme.colors.error,
-                    modifier = Modifier.padding(top = 8.dp),
+                    color = MaterialTheme.colors.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 2.dp),
                 )
             }
-        }
-        item {
-            LinkCodesBlock(viewModel = pairingViewModel, compact = true)
+            item {
+                val autoOn = monitoringEnabled
+                Text(
+                    text = when {
+                        sync.isSyncing -> stringResource(R.string.sync_in_progress)
+                        autoOn -> stringResource(R.string.sync_auto_on)
+                        else -> stringResource(R.string.sync_auto_off)
+                    },
+                    style = MaterialTheme.typography.caption2,
+                    color = MaterialTheme.colors.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+            item {
+                VitalMetricRow(
+                    label = stringResource(R.string.sync_last_upload),
+                    value = sync.lastUploadAt?.let { syncTimeFormatter.format(it) }
+                        ?: stringResource(R.string.sync_never),
+                )
+            }
+            item {
+                VitalMetricRow(
+                    label = stringResource(R.string.sync_pending),
+                    value = sync.pendingCount.toString(),
+                    level = when {
+                        sync.pendingCount == 0 -> AlertLevel.NOMINAL
+                        sync.pendingCount < 5 -> AlertLevel.WATCH
+                        else -> AlertLevel.ELEVATED
+                    },
+                )
+            }
+            item {
+                NavCompactChip(
+                    label = if (sync.isSyncing) {
+                        stringResource(R.string.sync_in_progress)
+                    } else {
+                        stringResource(R.string.sync_action)
+                    },
+                    icon = RaHelIcons.Sync,
+                    onClick = { if (!sync.isSyncing) vm.triggerSync() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                )
+            }
+            sync.lastError?.let { err ->
+                item {
+                    Text(
+                        text = err,
+                        style = MaterialTheme.typography.caption2,
+                        color = MaterialTheme.colors.error,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            }
+            // Installed version, read from the real build so it can never drift from the release.
+            item {
+                Text(
+                    text = stringResource(R.string.app_version_label, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                    style = MaterialTheme.typography.caption2,
+                    color = MaterialTheme.colors.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp, bottom = 22.dp),
+                )
+            }
         }
     }
 }

@@ -49,6 +49,10 @@ class SyncingHealthRepository(
     private val hasCredentials: () -> Boolean = { true },
     /** Returns the detected-sensor inventory, or null when collection has not warmed up yet. */
     private val sensorInventoryProvider: (() -> DeviceSensorsRequest?)? = null,
+    /** Injectable for JVM tests; production uses wall-clock time. */
+    private val nowMs: () -> Long = System::currentTimeMillis,
+    /** Injectable for JVM tests; production schedules the WorkManager one-shot upload. */
+    private val scheduleSync: () -> Unit = { HealthSyncScheduler.enqueueImmediate(context) },
 ) : HealthRepository {
 
     constructor(context: Context, initialProfile: SeedProfile = SeedProfile.HEALTHY_CREW) : this(
@@ -61,8 +65,12 @@ class SyncingHealthRepository(
 
     private companion object {
         const val TAG = "SyncingHealthRepo"
-        const val MAX_QUEUE_ROWS = 5_000
-        const val BATCH_SIZE = 100
+        /** ~5.5 h of offline buffer at one reading per second. */
+        const val MAX_QUEUE_ROWS = 20_000
+        /** Server accepts up to 500 readings and 500 assessments per batch. */
+        const val BATCH_SIZE = 300
+        /** Trim the queue every N inserts instead of on every one-per-second insert. */
+        const val TRIM_EVERY_INSERTS = 60
         const val MAX_BATCHES_PER_RUN = 100
         const val MAX_SAMPLE_AGE_MS = 120_000L
 
@@ -93,22 +101,46 @@ class SyncingHealthRepository(
         delegate.setSeedProfile(profile)
     }
 
-    /** Validates the sample (real HR, on wrist, paired, fresh, not already queued). */
-    private fun isRecordable(snapshot: HealthSnapshot): Boolean {
-        if (snapshot.crewMemberId.isBlank()) return false
-        val sv = snapshot.sensorVitals ?: return false
-        if (sv.heartRateBpm == null) return false
-        if (sv.onWrist == false) return false
-        val sampleAt = sv.sampleAtEpochMs ?: return false
-        if (System.currentTimeMillis() - sampleAt > MAX_SAMPLE_AGE_MS) return false
-        if (sampleAt == lastEnqueuedSampleAt) return false
-        return true
+    /**
+     * Returns the snapshot to queue, or null when it must be skipped (the reason is logged).
+     *
+     * A fresh heart-rate sample is not required: steps alone make a useful partial reading. A stale
+     * heart rate is dropped (sent as null) instead of being passed off as current. The off-body flag is
+     * deliberately not used to block: a fresh HR sample already proves the watch is worn, and the
+     * sensor's value convention is not guaranteed across vendors.
+     */
+    private fun recordable(snapshot: HealthSnapshot): HealthSnapshot? {
+        // Not linked yet: monitoring still runs, nothing is queued. Silent on purpose (called every few seconds).
+        if (snapshot.crewMemberId.isBlank()) return null
+        val sv = snapshot.sensorVitals ?: return skip("no sensor vitals yet")
+        val sampleAt = sv.sampleAtEpochMs
+        val freshHr = sv.heartRateBpm != null && sampleAt != null &&
+            nowMs() - sampleAt <= MAX_SAMPLE_AGE_MS
+        if (!freshHr && sv.stepsToday == null) {
+            return skip("no fresh heart rate (hr=${sv.heartRateBpm}, sampleAt=$sampleAt) and no steps")
+        }
+        val key = if (freshHr) sampleAt!! else snapshot.timestamp.toEpochMilli()
+        if (key == lastEnqueuedSampleAt) return null // already queued
+        return if (freshHr) {
+            snapshot
+        } else {
+            snapshot.copy(sensorVitals = sv.copy(heartRateBpm = null, sampleAtEpochMs = null))
+        }
+    }
+
+    private fun skip(reason: String): HealthSnapshot? {
+        Log.d(TAG, "Sample skipped: $reason")
+        return null
     }
 
     override suspend fun enqueueReading(snapshot: HealthSnapshot) {
-        if (!isRecordable(snapshot)) return
-        insertReading(snapshot)
-        trimAndSchedule()
+        val toQueue = recordable(snapshot) ?: return
+        insertReading(toQueue)
+        // High-frequency path: no WorkManager scheduling here (the recorder uploads continuously).
+        if (++insertsSinceTrim >= TRIM_EVERY_INSERTS) {
+            insertsSinceTrim = 0
+            dao.trimToNewest(MAX_QUEUE_ROWS)
+        }
     }
 
     private suspend fun insertReading(snapshot: HealthSnapshot) {
@@ -124,9 +156,12 @@ class SyncingHealthRepository(
         lastEnqueuedSampleAt = dto.recordedAtEpochMs
     }
 
+    private var insertsSinceTrim = 0
+
     private suspend fun trimAndSchedule() {
+        insertsSinceTrim = 0
         dao.trimToNewest(MAX_QUEUE_ROWS)
-        HealthSyncScheduler.enqueueImmediate(context)
+        scheduleSync()
     }
 
     override suspend fun enqueueProfileSnapshot(crewMemberId: String) {
@@ -134,7 +169,7 @@ class SyncingHealthRepository(
         if (dao.profileRowCount() > 0) return
         val profile = userProfileRepository.userProfile.first()
         if (!profile.onboardingComplete) return
-        val now = System.currentTimeMillis()
+        val now = nowMs()
         dao.insert(
             QueuedReadingEntity(
                 itemKind = QueueItemKind.PROFILE_SNAPSHOT,
@@ -143,24 +178,34 @@ class SyncingHealthRepository(
                 createdAtEpochMs = now,
             ),
         )
-        HealthSyncScheduler.enqueueImmediate(context)
+        scheduleSync()
     }
 
     override suspend fun recordAssessmentCycle(
         snapshot: HealthSnapshot,
         assessment: HealthAssessment,
     ): Boolean {
-        if (!isRecordable(snapshot)) return false
-        insertReading(snapshot)
-        dao.insert(
-            QueuedReadingEntity(
-                itemKind = QueueItemKind.HEALTH_ASSESSMENT,
-                crewMemberId = snapshot.crewMemberId,
-                payloadJson = gson.toJson(assessment.toApiPayload()),
-                createdAtEpochMs = lastEnqueuedSampleAt,
-            ),
-        )
-        trimAndSchedule()
+        val toQueue = recordable(snapshot) ?: return false
+        try {
+            insertReading(toQueue)
+            try {
+                dao.insert(
+                    QueuedReadingEntity(
+                        itemKind = QueueItemKind.HEALTH_ASSESSMENT,
+                        crewMemberId = toQueue.crewMemberId,
+                        payloadJson = gson.toJson(assessment.toApiPayload()),
+                        createdAtEpochMs = lastEnqueuedSampleAt,
+                    ),
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The reading is already queued; a bad assessment payload must not block its upload.
+                Log.w(TAG, "Assessment not queued", e)
+            }
+        } finally {
+            trimAndSchedule()
+        }
         return true
     }
 
@@ -193,7 +238,7 @@ class SyncingHealthRepository(
      */
     private suspend fun uploadSensorInventoryIfDue() {
         val provider = sensorInventoryProvider ?: return
-        val now = System.currentTimeMillis()
+        val now = nowMs()
         if (lastInventoryUploadAt != 0L && now - lastInventoryUploadAt < INVENTORY_INTERVAL_MS) return
         val request = provider() ?: return
         try {

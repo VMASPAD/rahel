@@ -15,6 +15,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.content.ContextCompat
 import xyz.targapps.rahel.RaHelApp
+import xyz.targapps.rahel.data.sensors.BodySensorPermissions
 import xyz.targapps.rahel.presentation.MainActivity
 
 /**
@@ -74,7 +75,7 @@ class HealthForegroundService : Service() {
         private const val NOTIFICATION_ID = 1001
 
         fun hasHealthPermission(context: Context): Boolean =
-            listOf(Manifest.permission.BODY_SENSORS, Manifest.permission.ACTIVITY_RECOGNITION).any {
+            listOf(BodySensorPermissions.heartRate, Manifest.permission.ACTIVITY_RECOGNITION).any {
                 ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
             }
 

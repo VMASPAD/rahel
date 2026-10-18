@@ -12,7 +12,6 @@ import androidx.wear.compose.material.CircularProgressIndicator
 import xyz.targapps.rahel.data.DevicePairingState
 import xyz.targapps.rahel.data.UserProfileRepository
 import xyz.targapps.rahel.presentation.HealthMonitorApp
-import xyz.targapps.rahel.presentation.pairing.PairingScreen
 import xyz.targapps.rahel.presentation.pairing.PairingViewModel
 import xyz.targapps.rahel.presentation.HealthMonitorViewModel
 import xyz.targapps.rahel.presentation.components.WearScreenFrame
@@ -26,13 +25,11 @@ fun RaHelAppEntry(
     onboardingViewModel: OnboardingViewModel,
     profileRepository: UserProfileRepository,
     pairingViewModel: PairingViewModel,
-    pairingState: DevicePairingState?,
+    @Suppress("UNUSED_PARAMETER") pairingState: DevicePairingState?,
 ) {
     val profileState by profileRepository.userProfile.collectAsState(initial = null)
 
     when {
-        pairingState == null -> LoadingProfile()
-        !pairingState.isPaired -> PairingScreen(pairingViewModel)
         profileState == null -> LoadingProfile()
         profileState?.onboardingComplete != true -> OnboardingFlow(onboardingViewModel)
         else -> {

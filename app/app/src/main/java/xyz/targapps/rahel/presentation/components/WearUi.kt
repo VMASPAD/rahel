@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -118,7 +120,7 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.caption1,
-        color = MaterialTheme.colors.primary,
+        color = MaterialTheme.colors.secondary,
         fontWeight = FontWeight.Medium,
         modifier = modifier
             .fillMaxWidth()
@@ -245,8 +247,9 @@ fun VitalMetricRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 2.dp, vertical = 7.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .heightIn(min = 32.dp)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
@@ -261,6 +264,8 @@ fun VitalMetricRow(
                 text = label,
                 style = MaterialTheme.typography.caption1,
                 color = MaterialTheme.colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Text(
@@ -268,6 +273,9 @@ fun VitalMetricRow(
             style = MaterialTheme.typography.body2,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.End,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 110.dp),
         )
     }
 }
@@ -296,7 +304,7 @@ fun ZScoreRow(
         ) {
             AlertLevelDot(level)
             Column {
-                Text(label, style = MaterialTheme.typography.caption1)
+                Text(label, style = MaterialTheme.typography.caption1, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     stringResource(R.string.z_score_format, zScore),
                     style = MaterialTheme.typography.caption2,
@@ -308,6 +316,8 @@ fun ZScoreRow(
             text = displayValue,
             style = MaterialTheme.typography.body2,
             fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            modifier = Modifier.padding(start = 6.dp),
         )
     }
 }
@@ -328,7 +338,7 @@ fun DashboardPageDots(currentPage: Int, pageCount: Int, modifier: Modifier = Mod
                     .size(if (active) 8.dp else 6.dp)
                     .clip(CircleShape)
                     .background(
-                        if (active) MaterialTheme.colors.primary
+                        if (active) MaterialTheme.colors.secondary
                         else MaterialTheme.colors.onSurfaceVariant.copy(alpha = 0.4f),
                     ),
             )
@@ -389,7 +399,7 @@ fun SelectedMarker(visible: Boolean) {
             imageVector = Icons.Filled.Check,
             contentDescription = stringResource(R.string.cd_selected),
             modifier = Modifier.size(22.dp),
-            tint = MaterialTheme.colors.primary,
+            tint = MaterialTheme.colors.secondary,
         )
     }
 }

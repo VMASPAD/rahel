@@ -65,11 +65,13 @@ class DefaultHealthSyncRepository(
     override suspend fun triggerSync(): Result<Unit> {
         _syncStatus.value = _syncStatus.value.copy(isSyncing = true, lastError = null)
         return try {
-            healthRepository.syncPending()
-            _syncStatus.value = _syncStatus.value.copy(
+            val uploaded = healthRepository.syncPending()
+            val current = _syncStatus.value
+            _syncStatus.value = current.copy(
                 isSyncing = false,
                 pendingCount = pendingDao.pendingCount(),
-                lastUploadAt = Instant.now(),
+                // Only a real upload counts: 0 rows (nothing pending, or a rejected token) is not "last upload".
+                lastUploadAt = if (uploaded > 0) Instant.now() else current.lastUploadAt,
             )
             Result.success(Unit)
         } catch (e: CancellationException) {

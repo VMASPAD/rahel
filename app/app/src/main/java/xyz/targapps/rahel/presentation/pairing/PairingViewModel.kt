@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import xyz.targapps.rahel.data.DevicePairingRepository
+import xyz.targapps.rahel.data.DevicePairingState
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import xyz.targapps.rahel.data.remote.PairingApiService
 import xyz.targapps.rahel.data.remote.PairingCodeRequest
 
@@ -50,6 +53,17 @@ class PairingViewModel(
         if (pairingJob?.isActive == true) return
         restart()
     }
+
+    /** Stops requesting/polling codes (the link block left the screen). */
+    fun stopLinkCodes() {
+        pairingJob?.cancel()
+        pairingJob = null
+        _uiState.value = PairingUiState()
+    }
+
+    /** Current pairing state (null until DataStore loads). */
+    val pairingState: StateFlow<DevicePairingState?> = pairingRepository.pairingState
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Cancels any running request/poll and starts a fresh one. */
     fun refreshCode() = restart()

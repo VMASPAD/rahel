@@ -6,16 +6,19 @@ import androidx.wear.compose.material.Colors
 import androidx.wear.compose.material.MaterialTheme
 
 private val RaHelColors = Colors(
-    primary = Color(0xFF64B5F6),
-    primaryVariant = Color(0xFF42A5F5),
-    secondary = Color(0xFF81C784),
-    background = Color(0xFF000000),
+    primary = BrandGreen,
+    primaryVariant = Color(0xFF005A29),
+    secondary = BrandMint,
+    secondaryVariant = BrandMintLight,
+    background = BrandForest,
     surface = SurfaceMuted,
-    onPrimary = Color(0xFF000000),
-    onSecondary = Color(0xFF000000),
-    onBackground = Color(0xFFECEFF1),
-    onSurface = Color(0xFFECEFF1),
+    error = StatusCritical,
+    onPrimary = BrandPink,
+    onSecondary = BrandForest,
+    onBackground = BrandPink,
+    onSurface = BrandPink,
     onSurfaceVariant = OnSurfaceMuted,
+    onError = BrandForest,
 )
 
 @Composable

@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import xyz.targapps.rahel.service.HealthForegroundService
@@ -17,6 +18,7 @@ import xyz.targapps.rahel.data.DeviceSensorHealthRepository
 import xyz.targapps.rahel.data.HealthRepository
 import xyz.targapps.rahel.data.HealthSyncRepository
 import xyz.targapps.rahel.data.SyncingHealthRepository
+import xyz.targapps.rahel.data.TelemetryRecorder
 import xyz.targapps.rahel.data.UserProfileRepository
 import xyz.targapps.rahel.data.local.RahelDatabase
 import xyz.targapps.rahel.data.remote.RemoteApiFactory
@@ -38,11 +40,14 @@ class RaHelApp : Application() {
     lateinit var syncRepository: HealthSyncRepository
     val assessmentEngine: HealthAssessmentEngine = HealthAssessmentEngine()
 
+    /** Separate engine for the background recorder, so recording never depends on the UI. */
+    private val recorderEngine: HealthAssessmentEngine = HealthAssessmentEngine()
+
     private val deviceTokenCache = AtomicReference<String?>(null)
 
     private val _collectionEnabled = MutableStateFlow(false)
 
-    /** True when paired, onboarded and the user turned monitoring on: sensors collect and the foreground service runs. */
+    /** True when onboarded and the user turned monitoring on (pairing is NOT required; uploads need it): sensors collect and the foreground service runs. */
     val collectionEnabled: StateFlow<Boolean> = _collectionEnabled
 
     /** Idempotent; also re-registers sensors whose permission was granted after the first attempt. */
@@ -79,6 +84,7 @@ class RaHelApp : Application() {
                 .collect { profile ->
                     profile.toOnboardingProfileInput()?.let { input ->
                         assessmentEngine.setBaselineFromOnboarding(input)
+                        recorderEngine.setBaselineFromOnboarding(input)
                     }
                 }
         }
@@ -87,7 +93,7 @@ class RaHelApp : Application() {
                 devicePairingRepository.pairingState.map { it.isPaired },
                 userProfileRepository.userProfile.map { it.onboardingComplete },
                 userProfileRepository.monitoringEnabled,
-            ) { paired, onboarded, monitoring -> paired && onboarded && monitoring }
+            ) { _, onboarded, monitoring -> onboarded && monitoring }
                 .distinctUntilChanged()
                 .collect { enabled ->
                     _collectionEnabled.value = enabled
@@ -119,6 +125,39 @@ class RaHelApp : Application() {
             },
         )
         syncRepository = DefaultHealthSyncRepository(healthRepository, dao)
+        // Record readings for as long as monitoring is on, independent of any Activity or screen state.
+        val recorder = TelemetryRecorder(
+            repository = healthRepository,
+            telemetry = sensorRepository,
+            engine = recorderEngine,
+            ensureSensors = { ensureSensorCollection() },
+            // Continuous upload: after every queued reading, push the queue right away (only when linked).
+            onRecorded = {
+                if (!deviceTokenCache.get().isNullOrBlank()) syncRepository.triggerSync()
+            },
+        )
+        // Linking after onboarding: queue the profile snapshot (it was skipped while unpaired).
+        applicationScope.launch {
+            combine(
+                devicePairingRepository.pairingState.map { it.crewMemberId.orEmpty() },
+                userProfileRepository.userProfile.map { it.onboardingComplete },
+            ) { crew, onboarded -> if (onboarded) crew else "" }
+                .distinctUntilChanged()
+                .collect { crew ->
+                    if (crew.isNotBlank()) {
+                        try {
+                            healthRepository.enqueueProfileSnapshot(crew)
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            android.util.Log.w("RaHelApp", "Profile snapshot not queued", e)
+                        }
+                    }
+                }
+        }
+        applicationScope.launch {
+            _collectionEnabled.collectLatest { enabled -> if (enabled) recorder.run() }
+        }
         HealthSyncScheduler.schedulePeriodic(this)
     }
 }

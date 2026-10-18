@@ -72,7 +72,7 @@ private fun tileLayout(
         .setResponsiveContentInsetEnabled(true)
         .setContent(
             Text.Builder(context, "Hello World!")
-                .setColor(argb(Colors.DEFAULT.onSurface))
+                .setColor(argb(0xFFFFE5E7.toInt()))
                 .setTypography(Typography.TYPOGRAPHY_CAPTION1)
                 .build()
         ).build()

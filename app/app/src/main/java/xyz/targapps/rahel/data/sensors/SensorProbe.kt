@@ -12,7 +12,7 @@ internal object SensorProbe {
         val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val bodySensorsGranted = ContextCompat.checkSelfPermission(
             context,
-            android.Manifest.permission.BODY_SENSORS,
+            BodySensorPermissions.heartRate,
         ) == PackageManager.PERMISSION_GRANTED
 
         fun fromSensorType(
@@ -23,7 +23,7 @@ internal object SensorProbe {
             if (requiresBodySensors && !bodySensorsGranted) {
                 return SensorAvailability(
                     SensorAvailabilityState.UNAVAILABLE,
-                    "BODY_SENSORS permission not granted",
+                    "Heart-rate permission not granted",
                 )
             }
             val sensor = sensorManager.getDefaultSensor(type)
