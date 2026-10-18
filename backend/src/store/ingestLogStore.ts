@@ -1,4 +1,4 @@
-import { getDb } from "../db/database.js";
+import { getDb, prep } from "../db/database.js";
 
 /** Retention: rows older than this are purged, and at most MAX_ROWS_PER_DEVICE are kept per device. */
 export const INGEST_LOG_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -20,8 +20,7 @@ export type IngestLogEntry = {
 
 /** Device id for a crew member (used when the request did not carry one, e.g. dev legacy ingest). */
 function deviceIdForCrew(crewMemberId: string): string | null {
-  const row = getDb()
-    .prepare(`SELECT device_id FROM devices WHERE crew_member_id = ?`)
+  const row = prep(`SELECT device_id FROM devices WHERE crew_member_id = ?`)
     .get(crewMemberId) as { device_id: string } | undefined;
   return row?.device_id ?? null;
 }
@@ -30,8 +29,7 @@ function deviceIdForCrew(crewMemberId: string): string | null {
 export function recordIngest(e: IngestLogEntry): void {
   const deviceId = e.deviceId ?? deviceIdForCrew(e.crewMemberId);
   if (!deviceId) return;
-  getDb()
-    .prepare(
+  prep(
       `INSERT INTO ingest_log (device_id, crew_member_id, received_at_epoch_ms, batch_id,
          readings_received, readings_accepted, duplicates, assessments_received,
          status, error_code, error_detail, bytes, app_version)
@@ -65,11 +63,9 @@ export function recordIngestSafe(e: IngestLogEntry): void {
 
 export function purgeIngestLog(now = Date.now()): number {
   const db = getDb();
-  const old = db
-    .prepare(`DELETE FROM ingest_log WHERE received_at_epoch_ms < ?`)
+  const old = prep(`DELETE FROM ingest_log WHERE received_at_epoch_ms < ?`)
     .run(now - INGEST_LOG_RETENTION_MS).changes;
-  const over = db
-    .prepare(
+  const over = prep(
       `DELETE FROM ingest_log WHERE id IN (
          SELECT id FROM (
            SELECT id, ROW_NUMBER() OVER (PARTITION BY device_id ORDER BY id DESC) AS rn

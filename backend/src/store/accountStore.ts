@@ -1,5 +1,5 @@
 import { randomBytes, randomInt } from "node:crypto";
-import { getDb } from "../db/database.js";
+import { getDb, prep } from "../db/database.js";
 import {
   decryptSecret,
   encryptSecret,
@@ -29,8 +29,7 @@ export function registerUser(
 ): UserRow {
   const db = getDb();
   const normalized = email.trim().toLowerCase();
-  const existing = db
-    .prepare("SELECT id FROM users WHERE email = ?")
+  const existing = prep("SELECT id FROM users WHERE email = ?")
     .get(normalized);
   if (existing) {
     throw new Error("EMAIL_TAKEN");
@@ -38,7 +37,7 @@ export function registerUser(
   const id = randomBytes(12).toString("hex");
   const now = Date.now();
   try {
-    db.prepare(
+    prep(
       `INSERT INTO users (id, email, password_hash, display_name, created_at_epoch_ms)
        VALUES (?, ?, ?, ?, ?)`,
     ).run(id, normalized, hashPassword(password), displayName ?? null, now);
@@ -54,8 +53,7 @@ export function registerUser(
 export function loginUser(email: string, password: string): UserRow {
   const db = getDb();
   const normalized = email.trim().toLowerCase();
-  const row = db
-    .prepare(
+  const row = prep(
       `SELECT id, email, password_hash, display_name FROM users WHERE email = ?`,
     )
     .get(normalized) as
@@ -77,8 +75,7 @@ export function loginUser(email: string, password: string): UserRow {
 }
 
 export function getUserById(userId: string): UserRow | null {
-  const row = getDb()
-    .prepare(`SELECT id, email, display_name FROM users WHERE id = ?`)
+  const row = prep(`SELECT id, email, display_name FROM users WHERE id = ?`)
     .get(userId) as
     | { id: string; email: string; display_name: string | null }
     | undefined;
@@ -91,8 +88,7 @@ export function getUserById(userId: string): UserRow | null {
 }
 
 export function listDevicesForUser(userId: string) {
-  return getDb()
-    .prepare(
+  return prep(
       `SELECT device_id, crew_member_id, paired_at_epoch_ms
        FROM devices WHERE user_id = ? AND revoked_at_epoch_ms IS NULL ORDER BY paired_at_epoch_ms DESC`,
     )
@@ -104,8 +100,7 @@ export function listDevicesForUser(userId: string) {
 }
 
 export function activeLinkSessionForDevice(deviceId: string) {
-  const row = getDb()
-    .prepare(
+  const row = prep(
       `SELECT code, secondary_code, expires_at_epoch_ms FROM pairing_codes
        WHERE device_id = ? AND expires_at_epoch_ms > ? AND claimed_by_user_id IS NULL
        ORDER BY expires_at_epoch_ms DESC LIMIT 1`,
@@ -143,10 +138,10 @@ function newCrewMemberId(): string {
 export function cleanupExpired(): void {
   const db = getDb();
   const now = Date.now();
-  db.prepare(`DELETE FROM pairing_codes WHERE expires_at_epoch_ms < ?`).run(
+  prep(`DELETE FROM pairing_codes WHERE expires_at_epoch_ms < ?`).run(
     now - 60 * 60 * 1000,
   );
-  db.prepare(`DELETE FROM device_token_pending WHERE created_at_epoch_ms < ?`).run(
+  prep(`DELETE FROM device_token_pending WHERE created_at_epoch_ms < ?`).run(
     now - PENDING_TOKEN_TTL_MS,
   );
 }
@@ -157,8 +152,8 @@ export function createPairingCode(deviceId: string) {
     const now = Date.now();
     const expiresAt = now + PAIRING_TTL_MS;
     cleanupExpired();
-    db.prepare(`DELETE FROM pairing_codes WHERE device_id = ?`).run(deviceId);
-    const insert = db.prepare(
+    prep(`DELETE FROM pairing_codes WHERE device_id = ?`).run(deviceId);
+    const insert = prep(
       `INSERT INTO pairing_codes
          (code, device_id, secondary_code, expires_at_epoch_ms, claimed_by_user_id, created_at_epoch_ms)
        VALUES (?, ?, ?, ?, NULL, ?)`,
@@ -191,20 +186,18 @@ export function getPairingStatus(deviceId: string): PairingStatus {
   const db = getDb();
   return db.transaction((): PairingStatus => {
     const now = Date.now();
-    const device = db
-      .prepare(
+    const device = prep(
         `SELECT crew_member_id FROM devices
          WHERE device_id = ? AND revoked_at_epoch_ms IS NULL`,
       )
       .get(deviceId) as { crew_member_id: string } | undefined;
     if (device) {
-      const pending = db
-        .prepare(
+      const pending = prep(
           `SELECT token_enc, created_at_epoch_ms FROM device_token_pending WHERE device_id = ?`,
         )
         .get(deviceId) as { token_enc: string; created_at_epoch_ms: number } | undefined;
       if (pending) {
-        db.prepare(`DELETE FROM device_token_pending WHERE device_id = ?`).run(deviceId);
+        prep(`DELETE FROM device_token_pending WHERE device_id = ?`).run(deviceId);
         const token =
           now - pending.created_at_epoch_ms <= PENDING_TOKEN_TTL_MS
             ? decryptSecret(pending.token_enc)
@@ -214,8 +207,7 @@ export function getPairingStatus(deviceId: string): PairingStatus {
         }
       }
       // Already paired; a newer unclaimed code means a re-link is in progress.
-      const open = db
-        .prepare(
+      const open = prep(
           `SELECT 1 FROM pairing_codes
            WHERE device_id = ? AND claimed_by_user_id IS NULL AND expires_at_epoch_ms >= ?`,
         )
@@ -224,8 +216,7 @@ export function getPairingStatus(deviceId: string): PairingStatus {
         ? { status: "pending" }
         : { status: "paired", crewMemberId: device.crew_member_id };
     }
-    const row = db
-      .prepare(
+    const row = prep(
         `SELECT expires_at_epoch_ms FROM pairing_codes
          WHERE device_id = ? ORDER BY expires_at_epoch_ms DESC LIMIT 1`,
       )
@@ -283,8 +274,7 @@ function claimTx(code: string, userId: string) {
   const normalized = normalizeSixDigitCode(code);
   return db.transaction(() => {
     const now = Date.now();
-    const row = db
-      .prepare(
+    const row = prep(
         `SELECT code, device_id, expires_at_epoch_ms, created_at_epoch_ms
          FROM pairing_codes WHERE code = ?`,
       )
@@ -299,8 +289,7 @@ function claimTx(code: string, userId: string) {
     if (!row) throw new Error("CODE_NOT_FOUND");
     if (row.expires_at_epoch_ms < now) throw new Error("CODE_EXPIRED");
 
-    const existing = db
-      .prepare(
+    const existing = prep(
         `SELECT user_id, crew_member_id, paired_at_epoch_ms, revoked_at_epoch_ms
          FROM devices WHERE device_id = ?`,
       )
@@ -324,8 +313,7 @@ function claimTx(code: string, userId: string) {
       throw new Error("DEVICE_ALREADY_PAIRED");
     }
 
-    const upd = db
-      .prepare(
+    const upd = prep(
         `UPDATE pairing_codes SET claimed_by_user_id = ?
          WHERE code = ? AND claimed_by_user_id IS NULL AND expires_at_epoch_ms >= ?`,
       )
@@ -338,14 +326,14 @@ function claimTx(code: string, userId: string) {
     // Same owner keeps history; a new owner (or a revoked device) gets a fresh crew id.
     if (existing && (existing.user_id === userId && existing.revoked_at_epoch_ms == null)) {
       crewMemberId = existing.crew_member_id;
-      db.prepare(
+      prep(
         `UPDATE devices SET token_hash = ?, paired_at_epoch_ms = ? WHERE device_id = ?`,
       ).run(tokenHash, now, row.device_id);
     } else {
       crewMemberId = insertOrReplaceDevice(row.device_id, userId, tokenHash, now, Boolean(existing));
     }
 
-    db.prepare(
+    prep(
       `INSERT INTO device_token_pending (device_id, token_enc, created_at_epoch_ms)
        VALUES (?, ?, ?)
        ON CONFLICT(device_id) DO UPDATE SET token_enc = excluded.token_enc,
@@ -372,12 +360,12 @@ function insertOrReplaceDevice(
     const crewMemberId = newCrewMemberId();
     try {
       if (exists) {
-        db.prepare(
+        prep(
           `UPDATE devices SET user_id = ?, crew_member_id = ?, token_hash = ?,
              paired_at_epoch_ms = ?, revoked_at_epoch_ms = NULL WHERE device_id = ?`,
         ).run(userId, crewMemberId, tokenHash, now, deviceId);
       } else {
-        db.prepare(
+        prep(
           `INSERT INTO devices (device_id, user_id, crew_member_id, token_hash, paired_at_epoch_ms)
            VALUES (?, ?, ?, ?, ?)`,
         ).run(deviceId, userId, crewMemberId, tokenHash, now);
@@ -401,15 +389,14 @@ function insertOrReplaceDevice(
 export function revokeDevice(deviceId: string, userId: string): boolean {
   const db = getDb();
   return db.transaction(() => {
-    const r = db
-      .prepare(
+    const r = prep(
         `UPDATE devices SET token_hash = '', revoked_at_epoch_ms = ?
          WHERE device_id = ? AND user_id = ? AND revoked_at_epoch_ms IS NULL`,
       )
       .run(Date.now(), deviceId, userId);
     if (r.changes !== 1) return false;
-    db.prepare(`DELETE FROM device_token_pending WHERE device_id = ?`).run(deviceId);
-    db.prepare(`DELETE FROM pairing_codes WHERE device_id = ?`).run(deviceId);
+    prep(`DELETE FROM device_token_pending WHERE device_id = ?`).run(deviceId);
+    prep(`DELETE FROM pairing_codes WHERE device_id = ?`).run(deviceId);
     return true;
   })();
 }
@@ -418,8 +405,7 @@ export function resolveDeviceByToken(
   token: string,
 ): { crewMemberId: string; deviceId: string } | null {
   const hash = hashDeviceToken(token);
-  const row = getDb()
-    .prepare(
+  const row = prep(
       `SELECT device_id, crew_member_id FROM devices
        WHERE token_hash = ? AND revoked_at_epoch_ms IS NULL`,
     )

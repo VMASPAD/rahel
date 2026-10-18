@@ -112,8 +112,23 @@ healthRoutes.get("/api/crew/:crewMemberId/latest", requireUser, (req: AuthedRequ
 healthRoutes.get("/api/crew/:crewMemberId/readings", requireUser, (req: AuthedRequest, res) => {
   const id = ownedCrew(req, res);
   if (!id) return;
-  const limit = Math.max(1, Math.min(Math.floor(Number(req.query.limit)) || 100, 500));
-  res.json(store.getReadings(id, limit));
+  const limit = Math.max(
+    1,
+    Math.min(Math.floor(Number(req.query.limit)) || 100, store.MAX_READINGS_LIMIT),
+  );
+  let bucketSeconds: number | null = null;
+  if (req.query.bucketSeconds !== undefined) {
+    const b = Number(req.query.bucketSeconds);
+    if (!Number.isInteger(b) || b < 1 || b > store.MAX_BUCKET_SECONDS) {
+      res.status(400).json({
+        error: "invalid_query",
+        details: [{ path: "bucketSeconds", message: `integer 1..${store.MAX_BUCKET_SECONDS}` }],
+      });
+      return;
+    }
+    bucketSeconds = b;
+  }
+  res.json(store.getReadings(id, limit, bucketSeconds));
 });
 
 healthRoutes.get(

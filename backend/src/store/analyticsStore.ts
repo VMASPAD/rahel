@@ -1,6 +1,6 @@
-import { getDb } from "../db/database.js";
+import { getDb, prep } from "../db/database.js";
 import { enrichReadings } from "../estimation/index.js";
-import { SAMPLE_INTERVAL_MS } from "../estimation/constants.js";
+import { NOMINAL_APP_SAMPLES_PER_MINUTE } from "../estimation/constants.js";
 import {
   assessField,
   ESTIMABLE_FIELDS,
@@ -16,10 +16,21 @@ import { readingWindowAsc } from "./telemetryStore.js";
 import type { SensorReadingDto } from "../types/health.js";
 
 const HOUR_MS = 3_600_000;
-/** A gap between consecutive readings above this counts as a hole in the data. */
-export const GAP_THRESHOLD_MS = 4 * SAMPLE_INTERVAL_MS;
-export const DEFAULT_WINDOW_HOURS = 168;
+/** A gap between consecutive readings above this counts as a hole (app nominal: 1 reading/s). */
+export const GAP_THRESHOLD_MS = 120_000;
+/**
+ * Default /fields window. At 1 Hz, 24 h = 86 400 rows/device; 7 days would be ~600k.
+ * Longer windows are allowed (up to MAX_WINDOW_HOURS) but are time-sampled in SQL.
+ */
+export const DEFAULT_WINDOW_HOURS = 24;
 export const MAX_WINDOW_HOURS = 720;
+/** /fields aggregates at most about this many rows (longer windows use one reading per bucket). */
+export const FIELDS_MAX_ROWS = 50_000;
+
+/** Bucket (seconds) used to sample a window of `hours` down to ~FIELDS_MAX_ROWS rows. */
+export function fieldsSampleSeconds(hours: number): number {
+  return Math.max(1, Math.ceil((hours * 3600) / FIELDS_MAX_ROWS));
+}
 
 export function clampWindowHours(raw: unknown): number {
   const n = Math.floor(Number(raw));
@@ -31,8 +42,7 @@ export type OwnedDevice = { deviceId: string; crewMemberId: string; pairedAt: nu
 
 /** Ownership check: null when the device is not the user's (or is revoked) => route answers 404. */
 export function ownedDevice(userId: string, deviceId: string): OwnedDevice | null {
-  const row = getDb()
-    .prepare(
+  const row = prep(
       `SELECT device_id, crew_member_id, paired_at_epoch_ms FROM devices
        WHERE device_id = ? AND user_id = ? AND revoked_at_epoch_ms IS NULL`,
     )
@@ -70,8 +80,7 @@ export type DeviceAnalyticsSummary = {
 /** Three grouped queries for all of the user's devices (no per-device queries). */
 export function listDeviceAnalytics(userId: string, now = Date.now()): DeviceAnalyticsSummary[] {
   const db = getDb();
-  const devices = db
-    .prepare(
+  const devices = prep(
       `SELECT device_id, crew_member_id, paired_at_epoch_ms FROM devices
        WHERE user_id = ? AND revoked_at_epoch_ms IS NULL ORDER BY paired_at_epoch_ms DESC`,
     )
@@ -79,8 +88,7 @@ export function listDeviceAnalytics(userId: string, now = Date.now()): DeviceAna
   if (devices.length === 0) return [];
   const since = now - 24 * HOUR_MS;
 
-  const totals = db
-    .prepare(
+  const totals = prep(
       `SELECT r.crew_member_id AS crew, COUNT(*) AS n,
               MIN(r.recorded_at_epoch_ms) AS first_at, MAX(r.recorded_at_epoch_ms) AS last_at
        FROM sensor_readings r
@@ -90,8 +98,7 @@ export function listDeviceAnalytics(userId: string, now = Date.now()): DeviceAna
     )
     .all(userId) as { crew: string; n: number; first_at: number; last_at: number }[];
 
-  const win = db
-    .prepare(
+  const win = prep(
       `WITH g AS (
          SELECT r.crew_member_id AS crew, r.recorded_at_epoch_ms AS t,
                 r.recorded_at_epoch_ms - LAG(r.recorded_at_epoch_ms)
@@ -111,8 +118,7 @@ export function listDeviceAnalytics(userId: string, now = Date.now()): DeviceAna
     gaps: number | null; gap_ms: number | null; max_gap: number | null;
   }[];
 
-  const logs = db
-    .prepare(
+  const logs = prep(
       `SELECT l.device_id AS device,
               SUM(CASE WHEN l.status = 'ok' THEN 1 ELSE 0 END) AS ok,
               SUM(CASE WHEN l.status = 'rechazado' THEN 1 ELSE 0 END) AS rej,
@@ -128,8 +134,7 @@ export function listDeviceAnalytics(userId: string, now = Date.now()): DeviceAna
     device: string; ok: number; rej: number; last_ok: number | null; app_version: string | null;
   }[];
 
-  const lastOkAll = db
-    .prepare(
+  const lastOkAll = prep(
       `SELECT l.device_id AS device, MAX(l.received_at_epoch_ms) AS last_ok
        FROM ingest_log l JOIN devices d ON d.device_id = l.device_id
        WHERE d.user_id = ? AND l.status = 'ok' GROUP BY l.device_id`,
@@ -160,7 +165,7 @@ export function listDeviceAnalytics(userId: string, now = Date.now()): DeviceAna
       lastReceivedAt: oMap.get(d.device_id) ?? null,
       readingsLast24h: w?.n ?? 0,
       samplesPerMinute: rate,
-      nominalSamplesPerMinute: 60_000 / SAMPLE_INTERVAL_MS,
+      nominalSamplesPerMinute: NOMINAL_APP_SAMPLES_PER_MINUTE,
       gaps24h: w?.gaps ?? 0,
       gapMs24h: w?.gap_ms ?? 0,
       maxGapMs24h: w?.max_gap && w.max_gap > GAP_THRESHOLD_MS ? w.max_gap : 0,
@@ -191,8 +196,14 @@ export type FieldReport = FieldAssessment & {
 export type FieldsAnalytics = {
   deviceId: string;
   windowHours: number;
+  /** Real number of stored readings in the window. */
   totalReadings: number;
+  /** Rows actually aggregated (== totalReadings unless the window is time-sampled). */
+  sampledReadings: number;
+  /** 1 = every reading; N > 1 = last reading of every N-second bucket. */
+  sampleBucketSeconds: number;
   deviceLastReadingAt: number | null;
+  /** Rows (30 s resampled) of the series used for estimates. */
   estimationWindowReadings: number;
   fields: FieldReport[];
 };
@@ -218,17 +229,41 @@ export function fieldsAnalytics(
       `MAX(CASE WHEN f${i} IS NOT NULL THEN t END) AS ls${i}`,
     ].join(", "),
   ).join(", ");
-  const row = db
-    .prepare(
-      `WITH r AS (
-         SELECT recorded_at_epoch_ms AS t, ${cols}
-         FROM sensor_readings WHERE crew_member_id = ? AND recorded_at_epoch_ms >= ?
-       )
+  const bucketSec = fieldsSampleSeconds(windowHours);
+  // Unsampled: one pass over the (crew, time) range. Sampled: the inner SELECT walks only
+  // the covering index to pick the last reading of each bucket, then one row lookup per bucket.
+  const source =
+    bucketSec === 1
+      ? `SELECT recorded_at_epoch_ms AS t, ${cols}
+         FROM sensor_readings WHERE crew_member_id = @crew AND recorded_at_epoch_ms >= @since`
+      : `SELECT s.recorded_at_epoch_ms AS t, ${cols.replaceAll("data_json", "s.data_json")}
+         FROM (
+           SELECT MAX(recorded_at_epoch_ms) AS bt FROM sensor_readings
+           WHERE crew_member_id = @crew AND recorded_at_epoch_ms >= @since
+           GROUP BY recorded_at_epoch_ms / CAST(@bucket AS INTEGER)
+         ) b JOIN sensor_readings s ON s.crew_member_id = @crew AND s.recorded_at_epoch_ms = b.bt`;
+  const params: Record<string, string | number> = { crew: device.crewMemberId, since };
+  if (bucketSec !== 1) params.bucket = bucketSec * 1000;
+  const row = prep(
+      `WITH r AS (${source})
        SELECT COUNT(*) AS total, MAX(t) AS last_t, ${aggs} FROM r`,
     )
-    .get(device.crewMemberId, since) as AggRow;
+    .get(params) as AggRow;
 
-  const total = Number(row.total ?? 0);
+  const sampled = Number(row.total ?? 0);
+  const total = sampled;
+  const realTotal =
+    bucketSec === 1
+      ? sampled
+      : Number(
+          (
+            prep(
+                `SELECT COUNT(*) AS n FROM sensor_readings
+                 WHERE crew_member_id = ? AND recorded_at_epoch_ms >= ?`,
+              )
+              .get(device.crewMemberId, since) as { n: number }
+          ).n,
+        );
   const deviceLast = row.last_t ?? null;
 
   // Read-time estimates (only the 4 estimable fields), over the same window the API uses.
@@ -281,7 +316,9 @@ export function fieldsAnalytics(
   return {
     deviceId: device.deviceId,
     windowHours,
-    totalReadings: total,
+    totalReadings: realTotal,
+    sampledReadings: sampled,
+    sampleBucketSeconds: bucketSec,
     deviceLastReadingAt: deviceLast,
     estimationWindowReadings: estWindow.length,
     fields,
@@ -313,7 +350,7 @@ export function replaceSensorInventory(
   now = Date.now(),
 ): number {
   const db = getDb();
-  const upsert = db.prepare(
+  const upsert = prep(
     `INSERT INTO device_sensor_inventory
        (device_id, sensor_key, type_name, type_id, sensor_name, vendor, wake_up, resolution,
         available, permission_granted, in_use, delivering, last_event_at, reported_at, app_version)
@@ -329,7 +366,7 @@ export function replaceSensorInventory(
   );
   const bool = (v: boolean | null | undefined) => (v == null ? null : v ? 1 : 0);
   db.transaction(() => {
-    db.prepare(`DELETE FROM device_sensor_inventory WHERE device_id = ?`).run(deviceId);
+    prep(`DELETE FROM device_sensor_inventory WHERE device_id = ?`).run(deviceId);
     for (const s of sensors) {
       upsert.run(
         deviceId, s.sensorKey, s.typeName, s.typeId ?? null, s.name ?? null, s.vendor ?? null,
@@ -369,8 +406,7 @@ export type SensorsAnalytics = {
 };
 
 export function sensorsAnalytics(device: OwnedDevice, fields: FieldsAnalytics): SensorsAnalytics {
-  const rows = getDb()
-    .prepare(
+  const rows = prep(
       `SELECT * FROM device_sensor_inventory WHERE device_id = ? ORDER BY available DESC, type_name, sensor_key`,
     )
     .all(device.deviceId) as {
@@ -465,8 +501,7 @@ export function ingestLogPage(
   const limit = Math.max(1, Math.min(Math.floor(Number(opts.limit)) || 50, 200));
   const before = Number(opts.before);
   const status = opts.status === "ok" || opts.status === "rechazado" ? opts.status : null;
-  const rows = getDb()
-    .prepare(
+  const rows = prep(
       `SELECT * FROM ingest_log
        WHERE device_id = @device
          AND (@before IS NULL OR id < @before)
@@ -513,16 +548,14 @@ export function timeline(device: OwnedDevice, hours: number, now = Date.now()) {
   const bucketMs = Math.max(60_000, Math.round((hours * HOUR_MS) / 96 / 60_000) * 60_000);
   const end = Math.ceil(now / bucketMs) * bucketMs;
   const start = end - Math.ceil((hours * HOUR_MS) / bucketMs) * bucketMs;
-  const rd = db
-    .prepare(
-      `SELECT (recorded_at_epoch_ms / @b) * @b AS bt, COUNT(*) AS n
+  const rd = prep(
+      `SELECT (recorded_at_epoch_ms / CAST(@b AS INTEGER)) * CAST(@b AS INTEGER) AS bt, COUNT(*) AS n
        FROM sensor_readings WHERE crew_member_id = @crew AND recorded_at_epoch_ms >= @s
        GROUP BY bt`,
     )
     .all({ b: bucketMs, crew: device.crewMemberId, s: start }) as { bt: number; n: number }[];
-  const lg = db
-    .prepare(
-      `SELECT (received_at_epoch_ms / @b) * @b AS bt,
+  const lg = prep(
+      `SELECT (received_at_epoch_ms / CAST(@b AS INTEGER)) * CAST(@b AS INTEGER) AS bt,
               SUM(status = 'ok') AS ok, SUM(status = 'rechazado') AS rej
        FROM ingest_log WHERE device_id = @dev AND received_at_epoch_ms >= @s GROUP BY bt`,
     )

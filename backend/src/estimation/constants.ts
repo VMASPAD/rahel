@@ -6,13 +6,20 @@
 export const MINUTE_MS = 60_000;
 export const HOUR_MS = 60 * MINUTE_MS;
 
-/** Nominal watch sampling interval (~30 s). */
+/**
+ * Cadence of the series the estimators work on. The watch sends 1 reading/s, but
+ * the thresholds below (sample counts, HRV dispersion, pair gaps) are calibrated
+ * for 30 s samples, so the stored data is resampled to this cadence at read time
+ * (last reading of every 30 s bucket, see telemetryStore.readingWindowAsc).
+ */
 export const SAMPLE_INTERVAL_MS = 30_000;
+/** Real nominal cadence of the Wear OS app (1 Hz). Not used by the estimators. */
+export const NOMINAL_APP_SAMPLES_PER_MINUTE = 60;
 
-/** Max rows read per request (about 25 h at 30 s). One query, no N+1. */
-export const MAX_WINDOW_ROWS = 3000;
 /** History window used by resting HR / HRV / sleep. */
 export const ANALYSIS_WINDOW_MS = 24 * HOUR_MS;
+/** Max resampled rows read per request (24 h / 30 s = 2880, +1 for the edge bucket). */
+export const MAX_WINDOW_ROWS = ANALYSIS_WINDOW_MS / SAMPLE_INTERVAL_MS + 1;
 
 /** A sample is "still" if stepsToday did not grow during this look-back. */
 export const STILL_LOOKBACK_MS = 60_000;
@@ -65,5 +72,5 @@ export const STRESS_WEIGHT_HR = 0.7;
 export const STRESS_WEIGHT_HRV = 0.3;
 
 // --- Windowed application to /readings ---
-/** Estimates are recomputed every N readings (~10 min) and inherited by the ones in between. */
-export const ANCHOR_STRIDE = 20;
+/** Estimates are recomputed every ~10 min of data time and inherited by the readings in between. */
+export const ANCHOR_INTERVAL_MS = 10 * MINUTE_MS;

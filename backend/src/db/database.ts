@@ -14,14 +14,27 @@ export function getDb(): Database.Database {
   return db;
 }
 
+const stmtCache = new Map<string, Database.Statement>();
+
+/** Cached prepared statement (hot paths run at 1 Hz per watch; avoids re-preparing and GC churn). */
+export function prep(sql: string): Database.Statement {
+  let st = stmtCache.get(sql);
+  if (!st) {
+    st = getDb().prepare(sql);
+    stmtCache.set(sql, st);
+  }
+  return st;
+}
+
 export function initDatabase(): void {
+  stmtCache.clear();
   const defaultPath = join(here, "../../data/rahel.db");
   const dbPath = process.env.RAHEL_DB_PATH ?? defaultPath;
   mkdirSync(dirname(dbPath), { recursive: true });
 
   db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
+  db.exec("PRAGMA journal_mode = WAL");
+  db.exec("PRAGMA foreign_keys = ON");
   db.exec(`
     CREATE TABLE IF NOT EXISTS profiles (
       crew_member_id TEXT PRIMARY KEY,
@@ -78,7 +91,7 @@ export function initDatabase(): void {
 }
 
 function columns(db: Database.Database, table: string): string[] {
-  return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(
+  return (prep(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(
     (c) => c.name,
   );
 }
@@ -149,9 +162,13 @@ function migrate(db: Database.Database): void {
     );
   `);
 
-  // Dedupe existing rows, then enforce uniqueness.
-  db.transaction(() => {
+  // Dedupe existing rows, then enforce uniqueness. Only when the unique indexes do not exist yet:
+  // the dedupe scans whole tables (millions of rows at 1 Hz) and must not run on every start.
+  const hasUnique = (name: string) =>
+    prep(`SELECT 1 AS x FROM sqlite_master WHERE type = 'index' AND name = ?`).get(name) !== undefined;
+  if (!hasUnique("uq_readings_crew_time") || !hasUnique("uq_assessments_crew_time")) {
     db.exec(`
+      BEGIN;
       DELETE FROM sensor_readings WHERE id NOT IN (
         SELECT MIN(id) FROM sensor_readings GROUP BY crew_member_id, recorded_at_epoch_ms);
       DELETE FROM health_assessments WHERE id NOT IN (
@@ -160,13 +177,13 @@ function migrate(db: Database.Database): void {
         ON sensor_readings (crew_member_id, recorded_at_epoch_ms);
       CREATE UNIQUE INDEX IF NOT EXISTS uq_assessments_crew_time
         ON health_assessments (crew_member_id, assessed_at_epoch_ms);
+      COMMIT;
     `);
-  })();
+  }
 }
 
 export function isDatabaseEmpty(): boolean {
-  const row = getDb()
-    .prepare("SELECT COUNT(*) AS n FROM profiles")
+  const row = prep("SELECT COUNT(*) AS n FROM profiles")
     .get() as { n: number };
   return row.n === 0;
 }

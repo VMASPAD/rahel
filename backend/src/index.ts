@@ -13,6 +13,7 @@ import { pairingRoutes } from "./routes/pairingRoutes.js";
 import { mountStaticWeb } from "./staticWeb.js";
 import { cleanupExpired } from "./store/accountStore.js";
 import { purgeIngestLog } from "./store/ingestLogStore.js";
+import { purgeOldReadings } from "./store/telemetryStore.js";
 
 initDatabase();
 seedIfEmpty();
@@ -20,6 +21,16 @@ cleanupExpired();
 setInterval(cleanupExpired, 60_000).unref();
 purgeIngestLog();
 setInterval(purgeIngestLog, 60 * 60_000).unref();
+const runRetention = () => {
+  try {
+    const n = purgeOldReadings();
+    if (n > 0) console.log(`Retention: deleted ${n} readings`);
+  } catch (e) {
+    console.error("Retention failed", e);
+  }
+};
+runRetention();
+setInterval(runRetention, 60 * 60_000).unref();
 
 const app = express();
 const port = Number(process.env.PORT) || 8080;

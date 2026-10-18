@@ -14,7 +14,7 @@ npm run dev
 
 ## Estimaciones (lectura)
 
-`/api/crew/:id/latest` y `/readings` rellenan, solo en la respuesta, los campos que el reloj no envía (`restingHeartRateBpm`, `hrvMs`, `sleepHoursLastNight`, `stressScore`) a partir del historial (ventana de hasta 3000 lecturas / 24 h) y añaden `estimates` por lectura (`method`, `confidence` low|medium, `sampleCount`). Los datos crudos en BD no se modifican; los valores medidos nunca se sustituyen; `skinTempCelsius` no se estima. Detalle y fórmulas en `../docs/estimation.md`; código en `src/estimation/`.
+`/api/crew/:id/latest` y `/readings` rellenan, solo en la respuesta, los campos que el reloj no envía (`restingHeartRateBpm`, `hrvMs`, `sleepHoursLastNight`, `stressScore`) a partir del historial (últimas 24 h remuestreadas a 30 s, ≤2881 filas, una consulta; la app envía 1 lectura/s) y añaden `estimates` por lectura (`method`, `confidence` low|medium, `sampleCount`). Los datos crudos en BD no se modifican; los valores medidos nunca se sustituyen; `skinTempCelsius` no se estima. Detalle y fórmulas en `../docs/estimation.md`; código en `src/estimation/`.
 
 Tests: `npm test` (node:test vía tsx).
 
@@ -26,6 +26,7 @@ Tests: `npm test` (node:test vía tsx).
 | `RAHEL_CORS_ORIGINS` | Lista blanca separada por comas (`https://app.example.com,...`). En dev, si está vacía, se permite `localhost`/`127.0.0.1`. En prod vacía = sin CORS cross-origin. |
 | `RAHEL_TRUST_PROXY` | `trust proxy` de Express para rate limiting tras Traefik/Coolify (`1` por defecto en prod, `false` en dev; acepta número, `true`/`false` o lista de subredes). |
 | `RAHEL_ALLOW_LEGACY_INGEST` | `true` permite `/profile` y `/telemetry/batch` sin `X-Device-Token` usando `crewMemberId` del body. **Solo dev**, se ignora en producción. |
+| `RAHEL_RETENTION_DAYS` | Días que se conservan las lecturas crudas (`sensor_readings`); por defecto **30**, `0` desactiva la purga. Se ejecuta al arrancar y cada hora, por trozos de 20 000 filas vía el índice `(crew_member_id, recorded_at_epoch_ms)`. |
 | `RAHEL_DB_PATH`, `RAHEL_ENABLE_SEED`, `PORT`, `HOST`, `STATIC_WEB_ROOT` | Sin cambios. Los datos del seed no pertenecen a ningún usuario, por lo que no son visibles en el dashboard autenticado. |
 
 - Lectura (`/api/crew*`): Bearer JWT; solo dispositivos propios (`devices.user_id`); si no es propio, `404 {"error":"crew not found"}`.
@@ -53,3 +54,11 @@ Registro y análisis de lo que llega de cada reloj. Detalle completo en `../docs
 - El lote de telemetría acepta `appVersion` opcional (se guarda en el log).
 - Tablas nuevas (migración aditiva `CREATE ... IF NOT EXISTS`): `ingest_log`, `device_sensor_inventory`.
 - Tests: `src/analytics/fieldQuality.test.ts` (cobertura, calidad, recomendaciones, cruce sensor/campo).
+
+## Escala y retención (1 lectura/s)
+
+- El reloj envía **1 lectura por segundo** en lotes de hasta ~300 (el servidor admite 500 lecturas + 500 evaluaciones por lote; un lote de 500+500 medido pesa ~0,4 MB, lejos del límite de 2 MB) y una evaluación cada 30 s. La deduplicación `UNIQUE(crew_member_id, recorded_at_epoch_ms)` + `INSERT OR IGNORE` sigue igual; la migración de dedupe solo corre si faltan los índices únicos (no en cada arranque).
+- **Crecimiento esperado:** ~86 400 filas/día/reloj (~30-40 MB/día/reloj en SQLite con el JSON actual: ~67 MB para 306k filas medidas), es decir ~2,6 M filas y ~1 GB por reloj con 30 días de retención. Planifica disco y backups en consecuencia o baja `RAHEL_RETENTION_DAYS`.
+- Lecturas: `GET /api/crew/:id/readings?limit=1..1000&bucketSeconds=1..3600` (sin `bucketSeconds`: filas crudas). Detalle en `../docs/estimation.md` y `../docs/analytics.md`.
+- Las sentencias de las rutas calientes se preparan una vez (`prep()` en `src/db/database.ts`).
+- Nota de entorno: con Node 24 y better-sqlite3 11.10 el recolector de basura puede abortar el proceso al finalizar `Statement` temporales (`Assertion failed: (env) != nullptr`); producción usa Node 20 (Dockerfile). Por eso se cachean sentencias y se evita `db.pragma()`/`db.transaction()` por llamada en las rutas calientes.

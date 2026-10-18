@@ -4,7 +4,7 @@
  * filled, and each filled field is flagged in `estimates`. skinTempCelsius is
  * deliberately never estimated (see docs/estimation.md).
  */
-import { ANALYSIS_WINDOW_MS, ANCHOR_STRIDE } from "./constants.js";
+import { ANALYSIS_WINDOW_MS, ANCHOR_INTERVAL_MS } from "./constants.js";
 import { estimateHrv } from "./hrv.js";
 import { estimateRestingHeartRate } from "./restingHeartRate.js";
 import { estimateSleepHours } from "./sleep.js";
@@ -72,25 +72,29 @@ function applyTo<T extends EstimableReading>(r: T, c: Computed): T {
 }
 
 /**
- * Enriches readings. `windowAsc`: history ascending (<= MAX_WINDOW_ROWS), whose
- * tail contains every reading in `targetsAsc` (same objects/timestamps, ascending).
+ * Enriches readings. `windowAsc`: history ascending, resampled to ~30 s
+ * (<= MAX_WINDOW_ROWS). `targetsAsc`: the readings to fill, ascending; they need
+ * not be members of the window (raw 1 Hz readings are fine): each target uses the
+ * window samples up to its own timestamp, never future data.
  *
  * Decision for /readings: estimates are computed at "anchors" every
- * ANCHOR_STRIDE readings (~10 min) plus the newest, each over its own 24 h
- * window (cost ~ (n/20) * window, a few ms), and the readings between anchors
- * inherit the previous anchor's values (never using future data). One DB query.
+ * ANCHOR_INTERVAL_MS (~10 min of data time) plus the newest target, each over
+ * its own 24 h window (a few ms each), and the targets between anchors inherit
+ * the previous anchor's values. Targets older than the first window sample get none.
  */
 export function enrichReadings<T extends EstimableReading>(windowAsc: T[], targetsAsc: T[]): T[] {
   if (targetsAsc.length === 0) return [];
   const samples = windowAsc.map(toSample);
-  const idxByT = new Map<number, number>();
-  windowAsc.forEach((r, i) => idxByT.set(r.recordedAtEpochMs, i));
   let current: Computed | null = null;
+  let anchorT = -Infinity;
+  let j = 0; // index of the last sample with t <= target time
   return targetsAsc.map((r, i) => {
-    const idx = idxByT.get(r.recordedAtEpochMs);
-    if (idx === undefined) return r;
-    if (current === null || i % ANCHOR_STRIDE === 0 || i === targetsAsc.length - 1) {
-      current = computeEstimatesAt(samples, idx);
+    const t = r.recordedAtEpochMs;
+    if (samples.length === 0 || samples[0].t > t) return r;
+    while (j + 1 < samples.length && samples[j + 1].t <= t) j++;
+    if (current === null || t - anchorT >= ANCHOR_INTERVAL_MS || i === targetsAsc.length - 1) {
+      current = computeEstimatesAt(samples, j);
+      anchorT = t;
     }
     return applyTo(r, current);
   });
