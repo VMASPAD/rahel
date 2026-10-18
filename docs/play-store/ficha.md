@@ -44,7 +44,7 @@ Alternativas:
 RaHel convierte tu reloj Wear OS en un monitor de signos vitales y envía los datos, de forma segura, a un panel web donde tú o tu equipo ven cómo evoluciona cada persona.
 
 QUÉ HACE
-• Mide el pulso (frecuencia cardíaca) y los pasos del día desde los sensores del reloj. Si tu reloj lo permite, también la saturación de oxígeno (SpO₂).
+• Mide el pulso (frecuencia cardíaca) y los pasos del día desde los sensores del reloj.
 • Calcula una evaluación de bienestar en el propio reloj y la muestra en pantalla.
 • Sigue funcionando con la pantalla apagada gracias a un servicio de salud en primer plano, con una notificación visible mientras está activo.
 • Si no hay conexión, guarda las muestras en el reloj y las envía cuando vuelve la red, sin duplicar lecturas.
@@ -77,7 +77,7 @@ REQUISITOS
 
 ```
 Primera versión de RaHel.
-• Medición de pulso y pasos desde el reloj, y SpO₂ en los modelos compatibles.
+• Medición de pulso y pasos desde el reloj.
 • Evaluación de bienestar en pantalla.
 • Envío seguro al panel web con vinculación por código.
 • Funciona sin conexión y reenvía al volver la red.
@@ -101,7 +101,7 @@ Vital signs from your Wear OS watch, on your wrist and in a web dashboard.
 RaHel turns your Wear OS watch into a vital-signs monitor and securely sends the data to a web dashboard where you or your team can follow how each person is doing.
 
 WHAT IT DOES
-• Measures heart rate and daily steps from your watch sensors. If your watch supports it, also blood oxygen saturation (SpO₂).
+• Measures heart rate and daily steps from your watch sensors.
 • Calculates a wellbeing assessment on the watch itself and shows it on screen.
 • Keeps working with the screen off through a foreground health service, with a visible notification while it is active.
 • If there is no connection, it stores samples on the watch and sends them when the network returns, without duplicating readings.
@@ -134,7 +134,7 @@ REQUIREMENTS
 
 ```
 First release of RaHel.
-• Heart rate and step measurement from the watch, and SpO₂ on supported models.
+• Heart rate and step measurement from the watch.
 • On-screen wellbeing assessment.
 • Secure upload to the web dashboard with code-based linking.
 • Works offline and resends when the network returns.

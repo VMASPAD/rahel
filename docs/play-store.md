@@ -1,6 +1,6 @@
 # Checklist de publicación en Google Play (RaHel, Wear OS)
 
-Datos de la app: paquete `xyz.targapps.rahel`, versionCode 5 / versionName 1.0.4, minSdk 30 (Wear OS 3+), targetSdk 36, app independiente (standalone), formato AAB.
+Datos de la app: paquete `xyz.targapps.rahel`, versionCode 14 / versionName 1.0.13, minSdk 30 (Wear OS 3+), targetSdk 36, app independiente (standalone), formato AAB.
 
 ## 0. Construir y firmar
 1. Crear `app/keystore.properties` (ver `app/keystore.properties.example`; está en .gitignore) o exportar `RAHEL_KEYSTORE_FILE`, `RAHEL_KEYSTORE_PASSWORD`, `RAHEL_KEY_ALIAS`, `RAHEL_KEY_PASSWORD`.
@@ -17,7 +17,7 @@ Datos de la app: paquete `xyz.targapps.rahel`, versionCode 5 / versionName 1.0.4
 ## 2. Ficha de Play Store
 - Título (<= 30): `RaHel`
 - Descripción breve (<= 80): "Monitoreo de bienestar y salud desde tu reloj Wear OS."
-- Descripción completa: qué mide (frecuencia cardíaca, HRV, SpO2, pasos, sueño, temperatura), evaluaciones de bienestar, sincronización opcional con panel web; incluir el aviso "No es un dispositivo médico ni sustituye consejo profesional".
+- Descripción completa: qué mide (frecuencia cardíaca y pasos; el servidor estima pulso en reposo, HRV, sueño y estrés a partir del historial), evaluaciones de bienestar, sincronización opcional con panel web; incluir el aviso "No es un dispositivo médico ni sustituye consejo profesional".
 - Icono 512x512: `docs/play-store/icon-512.png` (listo).
 - Gráfico de funciones 1024x500: pendiente (fondo #007A39, wordmark #FFE5E7).
 - **Capturas de reloj**: mínimo 1 y hasta 8, PNG/JPEG cuadradas 1:1 (p. ej. 384x384 a 3840x3840), sin marcos de dispositivo. Generar con emulador Wear OS redondo (Android Studio > Device Manager > Wear OS Large Round): pantalla de inicio/permisos, monitor de signos vitales, evaluación, vinculación, tile.
@@ -37,7 +37,7 @@ Recopilación: **Sí**. Compartición con terceros: **No** (el alojamiento propi
 
 | Categoría | Tipo | Recopilado | Obligatorio | Finalidad |
 |---|---|---|---|---|
-| Salud y forma física | Información de salud (FC, HRV, SpO2, temperatura, sueño, estrés) | Sí | No (la sincronización es opcional) | Funcionalidad de la app |
+| Salud y forma física | Información de salud (FC medida; pulso en reposo, HRV, sueño y estrés estimados en el servidor) | Sí | No (la sincronización es opcional) | Funcionalidad de la app |
 | Salud y forma física | Información sobre forma física (pasos, actividad) | Sí | No | Funcionalidad de la app |
 | Información personal | Otra info (sexo biológico, peso, altura, IMC) | Sí | No | Funcionalidad de la app |
 | Identificadores de app/dispositivo | ID de dispositivo/otros (crewMemberId, token de dispositivo) | Sí | Sí para sincronizar | Funcionalidad, seguridad |
@@ -48,7 +48,9 @@ Sin datos de ubicación, contactos, fotos, audio, ni publicidad. Los datos no se
 ## 5. Permisos y declaraciones sensibles
 | Permiso | Justificación para el revisor |
 |---|---|
-| `BODY_SENSORS` | Lectura de frecuencia cardíaca/SpO2/HRV/temperatura, función central de la app. |
+| `BODY_SENSORS` (solo hasta Android 15) | Lectura de la frecuencia cardíaca en relojes con Wear OS 5.1 o anterior. |
+| `health.READ_HEART_RATE` | Wear OS 6 / Android 16: sustituye a `BODY_SENSORS` para leer el pulso, función central de la app. |
+| `health.READ_HEALTH_DATA_IN_BACKGROUND` | Wear OS 6: seguir leyendo el pulso con la pantalla apagada (servicio en primer plano de salud). |
 | `ACTIVITY_RECOGNITION` | Pasos diarios y actividad para el cálculo de bienestar. |
 | `HIGH_SAMPLING_RATE_SENSORS` | Muestreo de HRV con precisión suficiente. |
 | `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_HEALTH` | Monitorización continua de signos vitales con la pantalla apagada. |
@@ -74,3 +76,7 @@ Sin datos de ubicación, contactos, fotos, audio, ni publicidad. Los datos no se
 4. Revisar "Pre-launch report" y Android vitals.
 5. Solicitar acceso a producción, completar notas de la versión (es / en), lanzamiento escalonado (p. ej. 20 %).
 6. Mantener `versionCode` creciente en cada subida (1 -> 2 -> ...).
+
+
+## Nota: permisos de salud nuevos (Wear OS 6)
+A partir de la versión 9 (sin SpO2: la app no lo lee) la app declara `android.permission.health.READ_HEART_RATE` y `READ_HEALTH_DATA_IN_BACKGROUND`. En *Contenido de la app > Apps de salud* Play puede pedir justificar también estos permisos; usa el mismo texto de `BODY_SENSORS` (lectura de pulso y SpO2 para el seguimiento de bienestar del propio usuario).

@@ -1,6 +1,6 @@
 # Estimación de métricas en el backend
 
-El reloj solo envía FC, SpO2 (si existe) y pasos del día (~1 lectura cada 30 s). `restingHeartRateBpm`, `hrvMs`, `sleepHoursLastNight`, `stressScore` y `skinTempCelsius` llegan `null`. El backend estima las cuatro primeras **al leer** (`/api/crew/:id/latest` y `/readings`); la BD conserva los datos crudos (null). Código: `backend/src/estimation/`.
+El reloj solo envía FC, SpO2 (si existe) y pasos del día (1 lectura por segundo desde la v1 Hz de la app; antes ~1 cada 30 s). `restingHeartRateBpm`, `hrvMs`, `sleepHoursLastNight`, `stressScore` y `skinTempCelsius` llegan `null`. El backend estima las cuatro primeras **al leer** (`/api/crew/:id/latest` y `/readings`); la BD conserva los datos crudos (null). Código: `backend/src/estimation/`.
 
 **Son estimaciones de apoyo, no mediciones clínicas.** `confidence` nunca es `high`.
 
@@ -29,4 +29,8 @@ No hay sensor de temperatura en el reloj ni un modelo físico defendible que la 
 
 ## Rendimiento y ventanas
 
-Una sola consulta por request (últimas 3000 lecturas, ~25 h a 30 s), sin N+1. `/latest` estima sobre la ventana de 24 h que termina en la última lectura. `/readings` calcula estimados en "anclas" cada 20 lecturas (~10 min), cada una con su propia ventana de 24 h, y las lecturas intermedias heredan el de la ancla previa (nunca usan datos futuros); la lectura más reciente siempre se calcula exacta. Coste: unas 25 ventanas como máximo para 500 lecturas (pocos ms). Lecturas con menos de 1 h de histórico previo no tendrán estimación de reposo/HRV/sueño/estrés.
+Los umbrales (mínimos de muestras, dispersión HRV, huecos de pareja) están calibrados para muestras cada 30 s, así que con 1 Hz (86 400 filas/día/reloj) el módulo trabaja sobre una **serie remuestreada a `SAMPLE_INTERVAL_MS` = 30 s** de las últimas `ANALYSIS_WINDOW_MS` = 24 h: una sola consulta SQL agrupa por cubo (`recorded_at_epoch_ms / 30000`), toma la **última lectura de cada cubo** (así `stepsToday` es el último valor y la dispersión de FC sigue siendo la de una muestra instantánea) y devuelve como máximo 2881 filas (`MAX_WINDOW_ROWS`). El subselect solo recorre el índice único `(crew_member_id, recorded_at_epoch_ms)` y luego se hace un acceso por fila-cubo. Sin N+1.
+
+`/latest` estima sobre esa ventana de 24 h que termina en la última lectura. `/readings` calcula estimados en "anclas" **por tiempo** (cada `ANCHOR_INTERVAL_MS` = 10 min de datos, más la lectura más reciente), cada una con su propia ventana de 24 h, y los objetivos intermedios heredan el de la ancla previa (nunca usan datos futuros). Los objetivos pueden ser lecturas crudas a 1 Hz (no hace falta que estén en la ventana remuestreada) o cubos (`bucketSeconds`); un objetivo anterior al inicio de la ventana de 24 h no recibe estimación. Lecturas con menos de 1 h de histórico previo no tendrán estimación de reposo/HRV/sueño/estrés.
+
+`/readings?limit&bucketSeconds`: `limit` 1..1000 (por defecto 100); sin `bucketSeconds` devuelve filas crudas (comportamiento previo); con `bucketSeconds` (entero 1..3600, si no `400 invalid_query`) devuelve la última lectura de cada cubo, para gráficos (la web pide `limit=300&bucketSeconds=30`, ~2,5 h). Con `bucketSeconds=30` se reutiliza la misma consulta de la ventana (1 consulta); en otros casos hay una segunda consulta acotada a `(limit+1)*bucket` ms.

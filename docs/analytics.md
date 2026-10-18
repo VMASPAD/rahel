@@ -10,7 +10,7 @@ Objetivo: saber qué sensores llegan de cada reloj emparejado, con qué calidad,
 
 ## Reglas de calidad y recomendación (`backend/src/analytics/fieldQuality.ts`)
 
-- **Calidad**: `medido` (algún valor no nulo recibido del reloj en la ventana), `estimado` (nunca llega pero el servidor lo rellena al leer: `hrvMs`, `restingHeartRateBpm`, `sleepHoursLastNight`, `stressScore`; recuento sobre las últimas ≤3000 lecturas), `no recibido`.
+- **Calidad**: `medido` (algún valor no nulo recibido del reloj en la ventana), `estimado` (nunca llega pero el servidor lo rellena al leer: `hrvMs`, `restingHeartRateBpm`, `sleepHoursLastNight`, `stressScore`; recuento sobre la serie de estimación: últimas 24 h remuestreadas a 30 s, ≤2881 filas), `no recibido`.
 - **Cobertura** = no nulos / lecturas de la ventana.
 - **Recomendación** (la primera regla que aplica):
   1. Sin lecturas: `requiere sensor`.
@@ -29,3 +29,12 @@ Ruta `/app/analitica` (lazy), enlazada desde el encabezado del panel. Polling ca
 ## App Wear OS
 
 `SensorCollector` guarda la hora del último evento por sensor; `SensorInventory` construye el informe (`SensorManager.getSensorList(TYPE_ALL)` + permisos `BODY_SENSORS`/`ACTIVITY_RECOGNITION` + streams de Health Services); `SyncingHealthRepository` lo envía tras sincronizar la cola, como mucho cada 6 h, con la misma política que el resto (401 -> `onAuthFailure`, red/5xx -> reintento de WorkManager). DTOs en `data/remote/SensorInventoryDtos.kt` con `@SerializedName` explícito.
+
+
+## Escala a 1 Hz (86 400 lecturas/día/reloj)
+
+- `nominalSamplesPerMinute` = `NOMINAL_APP_SAMPLES_PER_MINUTE` = 60 (cadencia real de la app, distinta de `SAMPLE_INTERVAL_MS` = 30 s, que es solo la cadencia del remuestreo de estimación). `samplesPerMinute` es la tasa real sin huecos; el umbral de hueco es `GAP_THRESHOLD_MS` = 120 s.
+- `/devices`: 3 consultas agrupadas para todos los relojes; la ventana de 24 h usa `LAG()` sobre ~86k filas por reloj y el total histórico es un `COUNT/MIN/MAX` sobre el índice (cubre hasta 30 días de retención, ~2,6 M filas/reloj: lineal pero solo índice).
+- `/fields` y `/sensors`: ventana por defecto **24 h** (antes 168 h); `hours` 1–720. Una agregación con `json_extract`; para acotar el coste agrega como máximo ~`FIELDS_MAX_ROWS` = 50 000 filas: si la ventana tiene más, se muestrea en SQL tomando la última lectura de cada cubo de `ceil(horas*3600/50000)` s (24 h => 2 s, 168 h => 13 s, 720 h => 52 s), recorriendo solo el índice. La respuesta añade `totalReadings` (real), `sampledReadings` y `sampleBucketSeconds`; cobertura, min/max/media/σ y "visto por última vez" salen de la muestra. `estimationWindowReadings` cuenta filas de la serie remuestreada a 30 s.
+- `/timeline`: agrega por cubo sobre el índice (hasta 168 h); medido ~15-25 ms con 170-300k filas.
+- Medido (300k filas, 1 reloj): `/devices` ~90 ms, `/fields` 24 h ~300 ms (con tope 100k filas eran ~515 ms), 168 h ~140 ms, 720 h ~80 ms.

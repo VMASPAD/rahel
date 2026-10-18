@@ -11,9 +11,7 @@ RaHel es una aplicación para relojes Wear OS (paquete `xyz.targapps.rahel`) que
 ## 2. Datos que recogemos
 **Datos de salud y actividad (sensores del reloj, con tu permiso):**
 - Frecuencia cardíaca y frecuencia cardíaca en reposo.
-- Variabilidad de la frecuencia cardíaca (HRV).
-- Saturación de oxígeno (SpO2), cuando el reloj la ofrece.
-- Temperatura de la piel, cuando el reloj la ofrece.
+- Estimaciones que calcula el servidor a partir de tu historial de pulso y pasos (pulso en reposo, variabilidad, sueño y estrés). Se marcan como estimadas y no son mediciones.
 - Pasos diarios y reconocimiento de actividad.
 - Horas de sueño de la última noche.
 - Puntuación de estrés estimada y síntomas autorreportados dentro de la app.
@@ -47,7 +45,8 @@ Puedes: retirar en cualquier momento los permisos de sensores desde Ajustes del 
 ## 8. Permisos que solicita la app y por qué
 | Permiso | Motivo |
 |---|---|
-| Sensores corporales (BODY_SENSORS) | Leer frecuencia cardíaca, HRV, SpO2 y temperatura. |
+| Sensores corporales (BODY_SENSORS / READ_HEART_RATE) | Leer la frecuencia cardíaca. |
+| Datos de salud en segundo plano (READ_HEALTH_DATA_IN_BACKGROUND) | Seguir leyendo el pulso con la pantalla apagada. |
 | Reconocimiento de actividad (ACTIVITY_RECOGNITION) | Contar pasos y detectar actividad. |
 | Servicio en primer plano de salud (FOREGROUND_SERVICE_HEALTH) | Mantener la monitorización continua con el reloj en reposo. |
 | Notificaciones (POST_NOTIFICATIONS) | Avisar de alertas de bienestar y de la monitorización activa. |
