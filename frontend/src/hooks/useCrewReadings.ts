@@ -3,6 +3,8 @@ import { api } from '../api/client'
 import type { SensorReadingDto } from '../types/health'
 
 const LIVE_POLL_MS = 5_000
+/** The watch sends 1 reading/s: charts get one point per 30 s (300 points ~ 2.5 h). */
+const CHART_BUCKET_SECONDS = 30
 
 export function useCrewReadings(crewMemberId: string | null) {
   const [readings, setReadings] = useState<SensorReadingDto[]>([])
@@ -23,7 +25,7 @@ export function useCrewReadings(crewMemberId: string | null) {
       inFlight.current = true
       if (!silent) setLoading(true)
       try {
-        const rows = await api.crewReadings(crewMemberId, 300)
+        const rows = await api.crewReadings(crewMemberId, 300, CHART_BUCKET_SECONDS)
         setReadings(rows.slice().reverse())
         setUpdatedAt(Date.now())
         setError(null)

@@ -17,7 +17,7 @@ type Kind = 'medido' | 'estimado' | 'no disponible'
 const SIGNALS: { name: string; unit: string; kind: Kind; desc: string; wide?: boolean }[] = [
   { name: 'Frecuencia cardíaca', unit: 'lpm', kind: 'medido', desc: 'Latidos por minuto desde el sensor óptico del reloj, cada 30 segundos.' },
   { name: 'Pasos', unit: 'pasos', kind: 'medido', desc: 'Actividad acumulada desde medianoche. Sirve para distinguir reposo de esfuerzo.' },
-  { name: 'Saturación de oxígeno', unit: 'SpO₂', kind: 'medido', desc: 'Porcentaje de oxígeno en sangre, en los relojes que lo miden.' },
+  { name: 'Saturación de oxígeno', unit: 'SpO₂', kind: 'no disponible', desc: 'Todavía no se lee desde el reloj. Aparecerá aquí cuando RaHel pueda medirla.' },
   { name: 'Pulso en reposo', unit: 'lpm', kind: 'estimado', desc: 'Percentil bajo del pulso de las últimas 24 horas en momentos sin movimiento.' },
   { name: 'Variabilidad (HRV)', unit: 'ms', kind: 'estimado', desc: 'Aproximación desde la dispersión del pulso en reposo. Confianza siempre baja.' },
   { name: 'Sueño', unit: 'horas', kind: 'estimado', desc: 'El bloque más largo de pulso bajo y sin pasos, de al menos 2 horas.' },
@@ -52,7 +52,6 @@ const FAQ = [
 
 const TICKER = [
   'FC 72 lpm',
-  'SpO₂ 98 %',
   'HRV 48 ms (est.)',
   'Sueño 7,1 h (est.)',
   'Pasos 6 240',

@@ -20,8 +20,10 @@ export const api = {
   crew: () => getJson<import('../types/health').CrewSummaryDto[]>('/api/crew'),
   crewLatest: (id: string) =>
     getJson<import('../types/health').CrewLatestDto>(`/api/crew/${encodeURIComponent(id)}/latest`),
-  crewReadings: (id: string, limit = 200) =>
+  /** `bucketSeconds` (1..3600): last reading of each bucket instead of raw rows (for charts). */
+  crewReadings: (id: string, limit = 200, bucketSeconds?: number) =>
     getJson<import('../types/health').SensorReadingDto[]>(
-      `/api/crew/${encodeURIComponent(id)}/readings?limit=${limit}`,
+      `/api/crew/${encodeURIComponent(id)}/readings?limit=${limit}` +
+        (bucketSeconds ? `&bucketSeconds=${bucketSeconds}` : ''),
     ),
 }
