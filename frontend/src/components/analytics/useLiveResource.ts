@@ -41,7 +41,7 @@ export function useLiveResource<T>(
       setUpdatedAt(Date.now())
     } catch (e) {
       if (c.signal.aborted) return
-      setError(e instanceof Error ? e.message : 'Error desconocido')
+      setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       if (!c.signal.aborted && initial) setLoading(false)
     }

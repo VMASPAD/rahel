@@ -1,26 +1,24 @@
-import { Link } from 'react-router-dom'
+import { WifiOff } from 'lucide-react'
 import { usePageMeta } from '../lib/usePageMeta'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { CrewList } from '../components/CrewList'
 import { VitalSummary } from '../components/VitalSummary'
 import { AssessmentPanel } from '../components/AssessmentPanel'
 import { useCrewDashboard } from '../hooks/useCrewDashboard'
 import { useCrewReadings } from '../hooks/useCrewReadings'
 import { TelemetryCharts } from '../components/TelemetryCharts'
-import { AuthPanel } from '../components/AuthPanel'
+import { Card } from '../components/dashboard/Card'
+import { KpiCards } from '../components/dashboard/KpiCards'
+import { PageHeader } from '../components/dashboard/PageHeader'
+import { useAppSession } from '../components/dashboard/appSession'
+import { Skeleton } from '../components/dashboard/Skeleton'
+import { StatusBar } from '../components/dashboard/StatusBar'
 import { LinkWatchPanel } from '../components/LinkWatchPanel'
-import { UNAUTHORIZED_EVENT } from '../api/client'
-import { authApi, getStoredToken, setStoredToken, type AuthUser, type DeviceSummary } from '../api/auth'
-import '../App.css'
-
-const SESSION_POLL_MS = 10_000
 
 export default function AppPage() {
-  usePageMeta({ title: 'Panel de tripulación', noindex: true })
-  const [token, setToken] = useState<string | null>(() => getStoredToken())
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [devices, setDevices] = useState<DeviceSummary[]>([])
-  const [authLoading, setAuthLoading] = useState(Boolean(getStoredToken()))
+  usePageMeta({ title: 'Crew dashboard', noindex: true })
+  const { token, devices, reloadSession } = useAppSession()
+  const [spinning, setSpinning] = useState(false)
 
   const pairedCrewIds = devices.map((d) => d.crewMemberId)
   const { crew, selectedId, detail, loading, error, refresh, selectCrew } =
@@ -33,143 +31,76 @@ export default function AppPage() {
     updatedAt: readingsUpdatedAt,
   } = useCrewReadings(selectedId)
 
-  const loadSession = useCallback(async (t: string, silent = false) => {
-    if (!silent) setAuthLoading(true)
-    try {
-      const me = await authApi.me(t)
-      setUser(me.user)
-      setDevices(me.devices)
-      setToken(t)
-    } catch {
-      if (!silent) {
-        setStoredToken(null)
-        setToken(null)
-        setUser(null)
-        setDevices([])
-      }
-    } finally {
-      if (!silent) setAuthLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const t = getStoredToken()
-    if (t) void loadSession(t)
-    else setAuthLoading(false)
-  }, [loadSession])
-
-  useEffect(() => {
-    if (!token) return
-    const timer = window.setInterval(() => {
-      if (!document.hidden) void loadSession(token, true)
-    }, SESSION_POLL_MS)
-    return () => window.clearInterval(timer)
-  }, [token, loadSession])
-
-  useEffect(() => {
-    const onUnauthorized = () => logout()
-    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
-    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
-  })
-
-  function logout() {
-    setStoredToken(null)
-    setToken(null)
-    setUser(null)
-    setDevices([])
-  }
-
-  if (authLoading) {
-    return (
-      <main className="page">
-        <p className="muted">Cargando sesión…</p>
-      </main>
-    )
-  }
-
-  if (!token || !user) {
-    return (
-      <main className="page">
-        <header className="header">
-          <p className="eyebrow">Mission control · RaHel</p>
-          <h1>Cuenta</h1>
-        </header>
-        <AuthPanel
-          onAuthenticated={(t, u) => {
-            setToken(t)
-            setUser(u)
-            void loadSession(t)
-          }}
-        />
-      </main>
-    )
-  }
+  const onboarding = devices.length === 0 && crew.length === 0 && !loading
+  const refreshing = spinning || loading || readingsLoading
+  const hasTitleId = selectedId != null
 
   return (
-    <main className="page">
-      <header className="header">
-        <p className="eyebrow">
-          <Link to="/" className="linkish">← RaHel</Link> · Panel · <Link to="/app/analitica" className="linkish">Analítica de sensores</Link>
-        </p>
-        <h1>Tripulación</h1>
-        <p className="lead">
-          Sesión: {user.email}
-          <button type="button" className="linkish logout" onClick={logout}>
-            Salir
-          </button>
-        </p>
-        <button
-          type="button"
-          className="refresh"
-          onClick={() => {
-            void refresh()
-            void reloadReadings()
-          }}
-        >
-          Actualizar
-        </button>
-      </header>
-
-      <LinkWatchPanel
-        token={token}
-        devices={devices}
-        onLinked={() => void loadSession(token)}
+    <>
+      <PageHeader
+        title="Crew dashboard"
+        subtitle={hasTitleId ? <>Showing <strong>{selectedId}</strong></> : 'Link a watch to get started'}
+        status={<StatusBar error={error} updatedAt={readingsUpdatedAt} />}
+        refreshing={refreshing}
+        onRefresh={() => {
+          setSpinning(true)
+          window.setTimeout(() => setSpinning(false), 700)
+          void refresh()
+          void reloadReadings()
+        }}
       />
-
-      {loading && crew.length === 0 && <p className="muted">Cargando tripulación…</p>}
       {error && (
-        <p className="warn">
-          {error}. Inicia el backend: <code>cd backend && npm run dev</code> (puerto 8080).
-        </p>
-      )}
-
-      {!error && (
-        <div className="grid">
-          <section className="card">
-            <h2>Crew</h2>
-            <CrewList crew={crew} selectedId={selectedId} onSelect={(id) => void selectCrew(id)} />
-          </section>
-          <section className="card">
-            <h2>Vitals · {selectedId ?? '—'}</h2>
-            <VitalSummary reading={detail?.latestReading ?? null} />
-          </section>
-          <section className="card wide">
-            <h2>Evaluación</h2>
-            <AssessmentPanel assessment={detail?.latestAssessment ?? null} />
-          </section>
-          <section className="card wide">
-            <h2>Historial del reloj · {selectedId ?? '—'}</h2>
-            <TelemetryCharts
-              crewMemberId={selectedId}
-              readings={readings}
-              loading={readingsLoading}
-              error={readingsError}
-              updatedAt={readingsUpdatedAt}
-            />
-          </section>
+        <div className="dx-banner" role="alert">
+          <WifiOff size={18} aria-hidden />
+          <div>
+            <strong>We could not reach the server.</strong>
+            <span> We keep trying every few seconds, or you can retry now.</span>
+          </div>
+          <button type="button" className="dx-btn dx-btn--soft dx-btn--sm" onClick={() => void refresh()}>
+            Retry
+          </button>
         </div>
       )}
-    </main>
+
+      <KpiCards
+        reading={detail?.latestReading ?? null}
+        assessment={detail?.latestAssessment ?? null}
+        history={readings}
+        loading={loading && crew.length === 0 && !error}
+      />
+
+      <div className={onboarding ? 'dx-grid dx-grid--onboard' : 'dx-grid'}>
+        <Card title="Crew" area="crew" index={5} note={crew.length ? `${crew.length}` : undefined}>
+          {loading && crew.length === 0 && !error ? (
+            <div className="dx-stack" aria-busy="true"><Skeleton h={64} r={12} /><Skeleton h={64} r={12} /></div>
+          ) : (
+            <CrewList crew={crew} selectedId={selectedId} onSelect={(id) => void selectCrew(id)} />
+          )}
+        </Card>
+        <Card title="Vital signs" area="vitals" index={6} note={selectedId ?? undefined}>
+          {loading && !detail && !error ? (
+            <div className="dx-stack" aria-busy="true"><Skeleton h={44} r={10} /><Skeleton h={44} r={10} /><Skeleton h={44} r={10} /></div>
+          ) : (
+            <VitalSummary reading={detail?.latestReading ?? null} />
+          )}
+        </Card>
+        <Card title="Assessment" area="assess" index={7}>
+          <AssessmentPanel assessment={detail?.latestAssessment ?? null} />
+        </Card>
+        <Card title="Your watch" area="link" index={onboarding ? 5 : 8}>
+          <LinkWatchPanel token={token} devices={devices} onLinked={() => void reloadSession()} />
+        </Card>
+        <Card title="Watch history" area="charts" index={9} note={selectedId ?? undefined}>
+          <TelemetryCharts
+            crewMemberId={selectedId}
+            readings={readings}
+            loading={readingsLoading}
+            error={readingsError}
+            updatedAt={readingsUpdatedAt}
+            onRetry={() => void reloadReadings()}
+          />
+        </Card>
+      </div>
+    </>
   )
 }
-

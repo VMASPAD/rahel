@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { analyticsApi, type IngestLogItem } from '../../api/analytics'
 import { clock, fmtBytes } from './format'
+import { ingestStatusLabel } from './labels'
 import { useLiveResource } from './useLiveResource'
 
-type StatusFilter = 'todos' | 'ok' | 'rechazado'
+type StatusFilter = 'all' | 'ok' | 'rechazado'
 const PAGE = 25
 
 export function IngestLog({ deviceId }: { deviceId: string }) {
-  const [filter, setFilter] = useState<StatusFilter>('todos')
+  const [filter, setFilter] = useState<StatusFilter>('all')
   const [older, setOlder] = useState<IngestLogItem[]>([])
   const [nextBefore, setNextBefore] = useState<number | null>(null)
   const [moreLoading, setMoreLoading] = useState(false)
   const [moreError, setMoreError] = useState<string | null>(null)
 
-  const status = filter === 'todos' ? null : filter
+  const status = filter === 'all' ? null : filter
   const key = `${deviceId}|${filter}`
   const head = useLiveResource(key, (signal) =>
     analyticsApi.log(deviceId, { limit: PAGE, status }, signal),
@@ -54,46 +55,46 @@ export function IngestLog({ deviceId }: { deviceId: string }) {
     <div>
       <div className="an-toolbar">
         <label className="an-field">
-          <span>Estado</span>
+          <span>Status</span>
           <select value={filter} onChange={(e) => setFilter(e.target.value as StatusFilter)}>
-            <option value="todos">Todos</option>
-            <option value="ok">Solo correctos</option>
-            <option value="rechazado">Solo rechazados</option>
+            <option value="all">All</option>
+            <option value="ok">Successful only</option>
+            <option value="rechazado">Rejected only</option>
           </select>
         </label>
         <span className="an-sub an-mono" aria-live="polite">
-          {items.length} registro{items.length === 1 ? '' : 's'} cargado{items.length === 1 ? '' : 's'}
+          {items.length} entr{items.length === 1 ? 'y' : 'ies'} loaded
         </span>
       </div>
 
-      {head.loading && items.length === 0 && <p className="an-empty">Cargando registro…</p>}
+      {head.loading && items.length === 0 && <p className="an-empty">Loading log…</p>}
       {head.error && items.length === 0 && (
         <p className="an-error" role="alert">
-          No se pudo cargar el registro ({head.error}).
+          The log did not load ({head.error}).
         </p>
       )}
       {!head.loading && !head.error && items.length === 0 && (
         <p className="an-empty">
           {filter === 'rechazado'
-            ? 'No hay lotes rechazados: todo lo que envía el reloj pasa la validación.'
-            : 'Aún no hay lotes registrados para este reloj.'}
+            ? 'No rejected batches: everything the watch sends passes validation.'
+            : 'No batches logged for this watch yet.'}
         </p>
       )}
 
       {items.length > 0 && (
-        <ol className="an-log" aria-label="Registro de lotes recibidos">
+        <ol className="an-log" aria-label="Received batches log">
           {items.map((i) => (
             <li key={i.id} className="an-logrow" data-status={i.status}>
               <time className="an-mono an-logtime" dateTime={new Date(i.receivedAt).toISOString()}>
                 {clock(i.receivedAt)}
               </time>
               <span className="an-logstatus" data-status={i.status}>
-                <span aria-hidden="true">{i.status === 'ok' ? '✓' : '✕'}</span> {i.status}
+                <span aria-hidden="true">{i.status === 'ok' ? '✓' : '✕'}</span> {ingestStatusLabel(i.status)}
               </span>
               <span className="an-mono an-logcounts">
-                {i.readingsAccepted}/{i.readingsReceived} lect.
+                {i.readingsAccepted}/{i.readingsReceived} readings
                 {i.duplicates > 0 ? ` · ${i.duplicates} dup.` : ''}
-                {i.assessmentsReceived > 0 ? ` · ${i.assessmentsReceived} eval.` : ''}
+                {i.assessmentsReceived > 0 ? ` · ${i.assessmentsReceived} assess.` : ''}
               </span>
               <span className="an-mono an-logbytes">{fmtBytes(i.bytes)}</span>
               <span className="an-mono an-logmsg">
@@ -109,12 +110,12 @@ export function IngestLog({ deviceId }: { deviceId: string }) {
 
       {moreError && (
         <p className="an-error" role="alert">
-          No se pudieron cargar más registros ({moreError}).
+          More entries did not load ({moreError}).
         </p>
       )}
       {cursor != null && (
         <button type="button" className="an-btn" onClick={() => void loadMore()} disabled={moreLoading}>
-          {moreLoading ? 'Cargando…' : 'Cargar registros anteriores'}
+          {moreLoading ? 'Loading…' : 'Load older entries'}
         </button>
       )}
     </div>

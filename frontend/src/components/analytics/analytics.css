@@ -502,3 +502,14 @@
     text-align: left;
   }
 }
+
+/* Embedded in the shared dashboard layout: no own background, height or page padding. */
+.an-page.an-embedded {
+  min-height: 0;
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+}
+.an-embedded .an-wrap {
+  max-width: none;
+}

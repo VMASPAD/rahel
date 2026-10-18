@@ -1,8 +1,8 @@
 {
   "name": "RaHel",
   "short_name": "RaHel",
-  "description": "Monitoreo de salud de tripulantes con reloj Wear OS y panel web.",
-  "lang": "es",
+  "description": "Crew health monitoring with a Wear OS watch and a web dashboard.",
+  "lang": "en",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

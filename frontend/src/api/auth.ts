@@ -1,3 +1,4 @@
+
 const base = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8080' : '')
 
 const TOKEN_KEY = 'rahel_auth_token'
@@ -16,11 +17,24 @@ export type DeviceSummary = {
   linkExpiresAt: number | null
 }
 
+/**
+ * Demo mode is an in-memory override only. This file deliberately knows nothing about the
+ * simulator (no import from ../demo): the real app never loads simulator code, and while demo
+ * mode is on the real token in localStorage is neither read nor written.
+ */
+let demoToken: string | null = null
+
+export function setDemoMode(active: boolean, token = 'demo-token') {
+  demoToken = active ? token : null
+}
+
 export function getStoredToken(): string | null {
+  if (demoToken !== null) return demoToken
   return localStorage.getItem(TOKEN_KEY)
 }
 
 export function setStoredToken(token: string | null) {
+  if (demoToken !== null) return
   if (token) localStorage.setItem(TOKEN_KEY, token)
   else localStorage.removeItem(TOKEN_KEY)
 }

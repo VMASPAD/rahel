@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RaHel · Monitoreo de salud de tripulantes con reloj Wear OS</title>
-    <meta name="description" content="RaHel mide el pulso y los pasos de cada tripulante con un reloj Wear OS, estima sueño y estrés a partir de ese historial y lo muestra todo en un panel web." />
+    <title>RaHel · Crew health monitoring with a Wear OS watch</title>
+    <meta name="description" content="RaHel measures heart rate and steps with your Wear OS watch and calculates estimates of recovery, sleep, heart rate variability and stress with specialized algorithms. All in one clear web dashboard." />
     <meta name="robots" content="index,follow,max-image-preview:large" />
     <link rel="canonical" href="https://rahel.hermesbackend.xyz/" />
     <meta name="theme-color" content="#007A39" />
@@ -16,22 +16,22 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
-    <!-- Fuente crítica (Outfit, subset latin) -->
+    <!-- Critical font (Outfit, latin subset) -->
     <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="RaHel" />
-    <meta property="og:locale" content="es_ES" />
-    <meta property="og:title" content="RaHel · Monitoreo de salud de tripulantes con reloj Wear OS" />
-    <meta property="og:description" content="El pulso de cada tripulante, del reloj al panel. Signos vitales en tiempo real con Wear OS y un panel web." />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="RaHel · Crew health monitoring with a Wear OS watch" />
+    <meta property="og:description" content="Every heartbeat tells you something. RaHel measures heart rate and steps with your watch and calculates estimates of recovery, sleep and stress." />
     <meta property="og:url" content="https://rahel.hermesbackend.xyz/" />
     <meta property="og:image" content="https://rahel.hermesbackend.xyz/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="RaHel: el pulso de cada tripulante, del reloj al panel." />
+    <meta property="og:image:alt" content="RaHel: every crew member's heartbeat, from watch to dashboard." />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="RaHel · Monitoreo de salud de tripulantes con reloj Wear OS" />
-    <meta name="twitter:description" content="El pulso de cada tripulante, del reloj al panel. Signos vitales en tiempo real con Wear OS y un panel web." />
+    <meta name="twitter:title" content="RaHel · Crew health monitoring with a Wear OS watch" />
+    <meta name="twitter:description" content="Every heartbeat tells you something. RaHel measures heart rate and steps with your watch and calculates estimates of recovery, sleep and stress." />
     <meta name="twitter:image" content="https://rahel.hermesbackend.xyz/og-image.png" />
 
     <script type="application/ld+json">
@@ -50,7 +50,7 @@
           "@id": "https://rahel.hermesbackend.xyz/#website",
           "url": "https://rahel.hermesbackend.xyz/",
           "name": "RaHel",
-          "inLanguage": "es",
+          "inLanguage": "en",
           "publisher": { "@id": "https://rahel.hermesbackend.xyz/#organization" }
         },
         {
@@ -58,10 +58,10 @@
           "name": "RaHel",
           "applicationCategory": "HealthApplication",
           "operatingSystem": "Wear OS, Web",
-          "description": "Monitoreo de salud de tripulantes con reloj Wear OS y panel web.",
+          "description": "Crew health monitoring with a Wear OS watch and a web dashboard.",
           "url": "https://rahel.hermesbackend.xyz/",
           "image": "https://rahel.hermesbackend.xyz/og-image.png",
-          "inLanguage": "es",
+          "inLanguage": "en",
           "publisher": { "@id": "https://rahel.hermesbackend.xyz/#organization" }
         }
       ]
@@ -72,14 +72,14 @@
     <div id="root"></div>
     <noscript>
       <main style="font-family:system-ui,sans-serif;max-width:40rem;margin:3rem auto;padding:0 1rem;color:#04281A">
-        <h1>RaHel · Monitoreo de salud de tripulantes</h1>
-        <p>El pulso de cada tripulante, del reloj al panel. RaHel lee el pulso y los pasos desde un reloj Wear OS, estima sueño y estrés a partir de ese historial, los sincroniza con un servidor y los muestra en un panel web.</p>
+        <h1>RaHel · Crew health monitoring</h1>
+        <p>Every crew member's heartbeat, from watch to dashboard. RaHel measures your heart rate and steps with a Wear OS watch and also calculates estimates of recovery, sleep, heart rate variability and stress with specialized algorithms built on physiological relationships described in the scientific literature. All in one clear web dashboard. RaHel is not a medical device.</p>
         <ul>
-          <li>Aplicación para reloj Wear OS con sensores de salud.</li>
-          <li>Panel web para seguir a toda la tripulación.</li>
-          <li>Evaluación y alertas automáticas de salud.</li>
+          <li>Wear OS watch app that measures heart rate and steps.</li>
+          <li>Web dashboard to follow your whole crew.</li>
+          <li>Smart readings of recovery, sleep and stress, plus an AI-powered Analysis section.</li>
         </ul>
-        <p>Activa JavaScript para usar el panel en <a href="/app">/app</a>.</p>
+        <p>Turn on JavaScript to use the dashboard at <a href="/app">/app</a>.</p>
       </main>
     </noscript>
     <script type="module" src="/src/main.tsx"></script>

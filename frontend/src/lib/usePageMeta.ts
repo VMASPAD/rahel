@@ -7,7 +7,7 @@
  *       - title:       <title> y og:title / twitter:title (se añade " · RaHel" si falta)
  *       - description: meta description, og:description, twitter:description (<=160 car.)
  *       - path:        ruta canónica (por defecto location.pathname). Se combina con SITE_URL.
- *       - noindex:     fuerza robots "noindex,nofollow". Rutas /app y /app/* son noindex
+ *       - noindex:     fuerza robots "noindex,nofollow". Rutas /app, /demo y sus subrutas son noindex
  *                      automáticamente aunque no se indique.
  *       - image:       URL o ruta de imagen OG (por defecto /og-image.png)
  *     Al desmontar restaura los valores previos del index.html.
@@ -20,7 +20,7 @@
  *   absoluteUrl(path): construye URL absoluta contra SITE_URL.
  *
  * Ejemplo:
- *   usePageMeta({ title: 'RaHel — Monitoreo de salud de tripulantes', description: '...' })
+ *   usePageMeta({ title: 'RaHel — Crew health monitoring', description: '...' })
  */
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
@@ -46,7 +46,12 @@ export function absoluteUrl(path: string): string {
 }
 
 function isPrivatePath(pathname: string): boolean {
-  return pathname === '/app' || pathname.startsWith('/app/')
+  return (
+    pathname === '/app' ||
+    pathname.startsWith('/app/') ||
+    pathname === '/demo' ||
+    pathname.startsWith('/demo/')
+  )
 }
 
 type Attr = 'name' | 'property'

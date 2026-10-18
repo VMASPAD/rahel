@@ -1,16 +1,12 @@
-const rtf = typeof Intl !== 'undefined' ? new Intl.RelativeTimeFormat('es', { numeric: 'auto' }) : null
-
-/** "hace 3 min", "hace 2 h"; null => "—". */
+/** "just now", "35s ago", "3 min ago", "2h ago", "4d ago"; null => "--". */
 export function relTime(ms: number | null | undefined, now = Date.now()): string {
-  if (ms == null) return '—'
-  const s = Math.round((ms - now) / 1000)
-  const a = Math.abs(s)
-  if (!rtf) return new Date(ms).toLocaleString('es')
-  if (a < 10) return 'ahora mismo'
-  if (a < 60) return rtf.format(s, 'second')
-  if (a < 3600) return rtf.format(Math.round(s / 60), 'minute')
-  if (a < 86400) return rtf.format(Math.round(s / 3600), 'hour')
-  return rtf.format(Math.round(s / 86400), 'day')
+  if (ms == null) return '--'
+  const s = Math.max(0, Math.round((now - ms) / 1000))
+  if (s < 10) return 'just now'
+  if (s < 60) return `${s}s ago`
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
 }
 
 export function clock(ms: number): string {
@@ -20,26 +16,26 @@ export function clock(ms: number): string {
 }
 
 export function fullDate(ms: number | null | undefined): string {
-  return ms == null ? '—' : new Date(ms).toLocaleString('es')
+  return ms == null ? '--' : new Date(ms).toLocaleString('en-US')
 }
 
 export function fmtBytes(n: number | null | undefined): string {
-  if (n == null) return '—'
+  if (n == null) return '--'
   if (n < 1024) return `${n} B`
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
   return `${(n / 1024 / 1024).toFixed(2)} MB`
 }
 
 export function fmtNum(v: number | null | undefined): string {
-  if (v == null) return '—'
-  if (Math.abs(v) >= 1000) return Math.round(v).toLocaleString('es')
+  if (v == null) return '--'
+  if (Math.abs(v) >= 1000) return Math.round(v).toLocaleString('en-US')
   return String(Math.round(v * 100) / 100)
 }
 
 export function fmtDuration(ms: number): string {
   const m = Math.round(ms / 60_000)
-  if (m < 1) return `${Math.round(ms / 1000)} s`
+  if (m < 1) return `${Math.round(ms / 1000)}s`
   if (m < 60) return `${m} min`
   const h = Math.floor(m / 60)
-  return `${h} h ${m % 60} min`
+  return `${h}h ${m % 60}min`
 }

@@ -1,4 +1,5 @@
 import { getStoredToken } from './auth'
+import { UNAUTHORIZED_EVENT } from './client'
 
 const base = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8080' : '')
 
@@ -137,6 +138,7 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
     signal,
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   })
+  if (res.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
   if (!res.ok) throw new AnalyticsApiError(res.status, `HTTP ${res.status}`)
   return res.json() as Promise<T>
 }

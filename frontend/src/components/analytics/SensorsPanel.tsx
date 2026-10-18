@@ -1,8 +1,10 @@
 import type { SensorReport, SensorsAnalytics } from '../../api/analytics'
 import { fullDate, relTime } from './format'
+import { sensorStatusLabel } from './labels'
+import { qualityLabel } from './labels'
 
 function Flag({ label, value }: { label: string; value: boolean | null }) {
-  const text = value === null ? 'n/a' : value ? 'sí' : 'no'
+  const text = value === null ? 'n/a' : value ? 'yes' : 'no'
   return (
     <span className="an-flag" data-v={value === null ? 'na' : value ? 'yes' : 'no'}>
       {label}: <b>{text}</b>
@@ -23,30 +25,30 @@ function SensorItem({ s }: { s: SensorReport }) {
           </p>
         </div>
         <span className="an-status" data-s={s.status}>
-          {s.status}
+          {sensorStatusLabel(s.status)}
         </span>
       </div>
       <div className="an-flags">
-        <Flag label="Disponible" value={s.available} />
-        <Flag label="Permiso" value={s.permissionGranted} />
-        <Flag label="Entregando" value={s.delivering} />
-        <Flag label="En uso" value={s.inUse} />
+        <Flag label="Available" value={s.available} />
+        <Flag label="Permission" value={s.permissionGranted} />
+        <Flag label="Delivering" value={s.delivering} />
+        <Flag label="In use" value={s.inUse} />
       </div>
       <p className="an-sub an-mono" title={fullDate(s.lastEventAt)}>
-        Último evento: {relTime(s.lastEventAt)}
-        {s.resolution != null ? ` · resolución ${s.resolution}` : ''}
+        Last event: {relTime(s.lastEventAt)}
+        {s.resolution != null ? ` · resolution ${s.resolution}` : ''}
       </p>
       {s.feeds.length > 0 ? (
-        <ul className="an-feeds" aria-label="Campos que alimenta">
+        <ul className="an-feeds" aria-label="Fields it feeds">
           {s.feeds.map((f) => (
             <li key={f.key}>
-              → {f.label} <span className="an-mono">({f.quality}, {f.coveragePct}%)</span>
+              → {f.label} <span className="an-mono">({qualityLabel(f.quality)}, {f.coveragePct}%)</span>
             </li>
           ))}
         </ul>
       ) : (
         <p className="an-sub">
-          {s.uploadsToServer ? '' : 'No alimenta ningún campo que se suba al servidor.'}
+          {s.uploadsToServer ? '' : 'It does not feed any field that is uploaded to the server.'}
         </p>
       )}
     </li>
@@ -57,15 +59,15 @@ export function SensorsPanel({ data }: { data: SensorsAnalytics }) {
   if (data.sensors.length === 0) {
     return (
       <p className="an-empty">
-        El reloj aún no ha enviado su inventario de sensores. Lo envía unos 2 minutos después de iniciar la
-        recolección y después cada ~6 h (requiere la versión de la app con esta función).
+        The watch has not sent its sensor inventory yet. It sends it about 2 minutes after collection starts,
+        then every ~6 h (requires an app version that includes this feature).
       </p>
     )
   }
   return (
     <>
       <p className="an-sub an-mono">
-        Inventario enviado {relTime(data.reportedAt)}
+        Inventory sent {relTime(data.reportedAt)}
         {data.appVersion ? ` · app ${data.appVersion}` : ''}
       </p>
       <ul className="an-sensors">
@@ -75,7 +77,7 @@ export function SensorsPanel({ data }: { data: SensorsAnalytics }) {
       </ul>
       {data.fieldsWithoutSensor.length > 0 && (
         <div className="an-callout">
-          <h3>Campos sin sensor que los alimente</h3>
+          <h3>Fields with no sensor feeding them</h3>
           <ul>
             {data.fieldsWithoutSensor.map((f) => (
               <li key={f.key}>

@@ -1,41 +1,56 @@
+import { Activity, Brain, HeartPulse, Moon } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { EstimatedField, SensorReadingDto } from '../types/health'
+import { EstTag } from './dashboard/EstTag'
 import './dashboard.css'
 
-const fmt = (v: number | null | undefined, unit: string) =>
-  v == null ? 'Sin dato' : `${v}${unit}`
+type Row = {
+  key: string
+  label: string
+  value: number | null
+  unit: string
+  icon: ReactNode
+  field?: EstimatedField
+}
 
 export function VitalSummary({ reading }: { reading: SensorReadingDto | null }) {
-  if (!reading) return <p className="muted">Sin lecturas aún.</p>
-  const est = (field: EstimatedField) => reading.estimates?.[field]
-  const rows: [string, string, EstimatedField?][] = [
-    ['FC', fmt(reading.heartRateBpm, ' bpm')],
-    ['FC reposo', fmt(reading.restingHeartRateBpm, ' bpm'), 'restingHeartRateBpm'],
-    ['HRV', fmt(reading.hrvMs, ' ms'), 'hrvMs'],
-    ['SpO₂', fmt(reading.spO2Percent, '%')],
-    ['Sueño', fmt(reading.sleepHoursLastNight, ' h'), 'sleepHoursLastNight'],
-    ['Temp. piel', fmt(reading.skinTempCelsius, ' °C')],
-    ['Estrés', fmt(reading.stressScore, '/100'), 'stressScore'],
-    ['Día misión', fmt(reading.missionDay, '')],
+  if (!reading) {
+    return (
+      <div className="dx-empty dx-empty--inline">
+        <span className="dx-empty-ico" aria-hidden><HeartPulse size={22} /></span>
+        <p>Vital signs will appear here as soon as the watch sends its first reading.</p>
+      </div>
+    )
+  }
+  const rows: Row[] = [
+    { key: 'hr', label: 'HR', value: reading.heartRateBpm, unit: 'bpm', icon: <HeartPulse size={16} /> },
+    { key: 'rhr', label: 'Resting HR', value: reading.restingHeartRateBpm, unit: 'bpm', icon: <Moon size={16} />, field: 'restingHeartRateBpm' },
+    { key: 'hrv', label: 'HRV', value: reading.hrvMs, unit: 'ms', icon: <Activity size={16} />, field: 'hrvMs' },
+    { key: 'sleep', label: 'Sleep', value: reading.sleepHoursLastNight, unit: 'h', icon: <Moon size={16} />, field: 'sleepHoursLastNight' },
+    { key: 'stress', label: 'Stress', value: reading.stressScore, unit: '/100', icon: <Brain size={16} />, field: 'stressScore' },
   ]
   return (
     <dl className="vitals">
-      {rows.map(([k, v, field]) => {
-        const e = field ? est(field) : undefined
+      {rows.map((r) => {
+        const e = r.field ? reading.estimates?.[r.field] : undefined
         return (
-        <div key={k} className="vital-row">
-          <dt>{k}</dt>
-          <dd>
-            {v}
-            {e && (
-              <span
-                className="est-tag"
-                title={`Estimado a partir del historial del reloj (${e.sampleCount} muestras, confianza ${e.confidence === 'low' ? 'baja' : 'media'}). No es una medición.`}
-              >
-                est.
-              </span>
-            )}
-          </dd>
-        </div>
+          <div key={r.key} className={`vital-row ${r.value == null ? 'is-empty' : ''}`}>
+            <dt>
+              <span className="vital-ico" aria-hidden>{r.icon}</span>
+              {r.label}
+            </dt>
+            <dd>
+              {r.value == null ? (
+                <span className="dx-dash" aria-label="No data">--</span>
+              ) : (
+                <>
+                  <span className="dx-num dx-num--md">{r.value}</span>
+                  {r.unit && <span className="dx-unit">{r.unit}</span>}
+                  {e && <EstTag info={e} />}
+                </>
+              )}
+            </dd>
+          </div>
         )
       })}
     </dl>

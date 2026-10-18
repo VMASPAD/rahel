@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { analyticsApi } from '../api/analytics'
-import { getStoredToken } from '../api/auth'
+import { PageHeader } from '../components/dashboard/PageHeader'
 import { ArrivalTimeline } from '../components/analytics/ArrivalTimeline'
 import { FieldsTable } from '../components/analytics/FieldsTable'
 import { IngestLog } from '../components/analytics/IngestLog'
@@ -10,12 +10,13 @@ import { SummaryCards } from '../components/analytics/SummaryCards'
 import { relTime } from '../components/analytics/format'
 import { useLiveResource } from '../components/analytics/useLiveResource'
 import { usePageMeta } from '../lib/usePageMeta'
+import { useAppBase } from '../components/dashboard/appSession'
 import '../components/analytics/analytics.css'
 
 const WINDOWS = [
-  { hours: 24, label: 'Últimas 24 h' },
-  { hours: 168, label: 'Últimos 7 días' },
-  { hours: 720, label: 'Últimos 30 días' },
+  { hours: 24, label: 'Last 24 hours' },
+  { hours: 168, label: 'Last 7 days' },
+  { hours: 720, label: 'Last 30 days' },
 ]
 
 function Block({
@@ -40,11 +41,11 @@ function Block({
       </header>
       {loading ? (
         <p className="an-empty" role="status">
-          Cargando…
+          Loading…
         </p>
       ) : error ? (
         <p className="an-error" role="alert">
-          No se pudo cargar esta sección ({error}). Se reintentará automáticamente.
+          This section did not load ({error}). We will retry automatically.
         </p>
       ) : (
         children
@@ -54,14 +55,14 @@ function Block({
 }
 
 export default function Analytics() {
-  usePageMeta({ title: 'Analítica de sensores', noindex: true })
-  const hasToken = Boolean(getStoredToken())
+  usePageMeta({ title: 'Sensor analytics', noindex: true })
+  const { base } = useAppBase()
   const [selected, setSelected] = useState<string | null>(null)
   const [hours, setHours] = useState(168)
   const selId = useId()
   const winId = useId()
 
-  const devices = useLiveResource(hasToken ? 'devices' : null, (s) => analyticsApi.devices(s))
+  const devices = useLiveResource('devices', (s) => analyticsApi.devices(s))
   const list = devices.data
 
   useEffect(() => {
@@ -77,39 +78,19 @@ export default function Analytics() {
     analyticsApi.timeline(device!.deviceId, 24, s),
   )
 
-  if (!hasToken || (devices.error && /401/.test(devices.error))) {
-    return (
-      <main className="an-page">
-        <div className="an-wrap">
-          <h1 className="an-title">Analítica de sensores</h1>
-          <p className="an-empty">
-            Necesitas iniciar sesión para ver la analítica de tus relojes.{' '}
-            <Link to="/app" className="an-link">
-              Ir al panel e iniciar sesión
-            </Link>
-          </p>
-        </div>
-      </main>
-    )
-  }
-
   return (
-    <main className="an-page">
+    <div className="an-page an-embedded">
+      <PageHeader
+        title="Sensor analytics"
+        subtitle="What each watch sends, how good it is, and which sensors are worth keeping or dropping."
+        onRefresh={() => devices.reload()}
+        refreshing={devices.loading}
+      />
       <div className="an-wrap">
         <header className="an-head">
-          <p className="an-eyebrow">
-            <Link to="/app" className="an-link">
-              ← Panel
-            </Link>{' '}
-            · RaHel
-          </p>
-          <h1 className="an-title">Analítica de sensores</h1>
-          <p className="an-lead">
-            Qué llega de cada reloj, con qué calidad, y qué sensores conviene usar o descartar.
-          </p>
           <div className="an-toolbar">
             <label className="an-field" htmlFor={selId}>
-              <span>Reloj</span>
+              <span>Watch</span>
               <select
                 id={selId}
                 value={selected ?? ''}
@@ -124,7 +105,7 @@ export default function Analytics() {
               </select>
             </label>
             <label className="an-field" htmlFor={winId}>
-              <span>Ventana de campos</span>
+              <span>Fields window</span>
               <select id={winId} value={hours} onChange={(e) => setHours(Number(e.target.value))}>
                 {WINDOWS.map((w) => (
                   <option key={w.hours} value={w.hours}>
@@ -133,59 +114,50 @@ export default function Analytics() {
                 ))}
               </select>
             </label>
-            <button
-              type="button"
-              className="an-btn"
-              onClick={() => {
-                devices.reload()
-              }}
-            >
-              Actualizar
-            </button>
             <span className="an-live an-mono" aria-live="off">
               <span className="an-dot an-dot--live" aria-hidden="true" />
-              {devices.updatedAt ? `actualizado ${relTime(devices.updatedAt)} · cada 10 s` : 'sin actualizar'}
+              {devices.updatedAt ? `updated ${relTime(devices.updatedAt)} · every 10 s` : 'not updated yet'}
             </span>
           </div>
         </header>
 
         {devices.loading ? (
           <p className="an-empty" role="status">
-            Cargando relojes…
+            Loading watches…
           </p>
         ) : devices.error && !list ? (
           <p className="an-error" role="alert">
-            No se pudo contactar con el servidor ({devices.error}). Comprueba que el backend esté en marcha.
+            We could not reach the server ({devices.error}). Check that the backend is running.
           </p>
         ) : !list || list.length === 0 ? (
           <p className="an-empty">
-            Todavía no hay ningún reloj vinculado. Vincula uno desde el{' '}
-            <Link to="/app" className="an-link">
-              panel
+            No watch is linked yet. Link one from the{' '}
+            <Link to={base} className="an-link">
+              dashboard
             </Link>{' '}
-            para empezar a registrar sus sensores.
+            to start recording its sensors.
           </p>
         ) : device ? (
           <>
             <SummaryCards device={device} />
 
             <Block
-              title="Campos recibidos"
-              hint={`Cobertura sobre ${fields.data?.totalReadings.toLocaleString('es') ?? '…'} lecturas. «Estimado» = rellenado por el servidor (no medido).`}
+              title="Fields received"
+              hint={`Coverage across ${fields.data?.totalReadings.toLocaleString('en-US') ?? '…'} readings. "Estimated" means filled in by the server rather than measured by the watch.`}
               loading={fields.loading}
               error={fields.error && !fields.data ? fields.error : null}
             >
               {fields.data &&
                 (fields.data.totalReadings === 0 ? (
-                  <p className="an-empty">No hay lecturas en esta ventana. Amplía la ventana o espera a que el reloj sincronice.</p>
+                  <p className="an-empty">No readings in this window yet. Widen the window or wait for the watch to sync.</p>
                 ) : (
                   <FieldsTable fields={fields.data.fields} windowHours={fields.data.windowHours} />
                 ))}
             </Block>
 
             <Block
-              title="Sensores detectados en el reloj"
-              hint="Inventario de SensorManager cruzado con lo que realmente llega."
+              title="Sensors detected on the watch"
+              hint="The SensorManager inventory, cross-checked against what actually arrives."
               loading={sensors.loading}
               error={sensors.error && !sensors.data ? sensors.error : null}
             >
@@ -193,8 +165,8 @@ export default function Analytics() {
             </Block>
 
             <Block
-              title="Llegada de datos (24 h)"
-              hint="Los huecos aparecen en rosado."
+              title="Data arrival (24 h)"
+              hint="Gaps show up in pink."
               loading={timeline.loading}
               error={timeline.error && !timeline.data ? timeline.error : null}
             >
@@ -203,14 +175,14 @@ export default function Analytics() {
 
             <section className="an-section" aria-labelledby="an-log-h">
               <header className="an-sechead">
-                <h2 id="an-log-h">Registro de ingesta</h2>
-                <p className="an-sub">Cada lote recibido o rechazado, del más reciente al más antiguo (retención 30 días).</p>
+                <h2 id="an-log-h">Ingest log</h2>
+                <p className="an-sub">Every batch received or rejected, newest first (kept for 30 days).</p>
               </header>
               <IngestLog deviceId={device.deviceId} />
             </section>
           </>
         ) : null}
       </div>
-    </main>
+    </div>
   )
 }

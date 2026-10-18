@@ -11,57 +11,57 @@ export function SummaryCards({ device }: { device: DeviceAnalytics }) {
   const rateRatio = rate == null ? null : rate / device.nominalSamplesPerMinute
 
   return (
-    <section className="an-cards" aria-label="Resumen del reloj">
+    <section className="an-cards" aria-label="Watch summary">
       <article className="an-card">
-        <h3>Última recepción</h3>
+        <h3>Last received</h3>
         <p className="an-big" data-tone={stale ? 'warn' : 'live'} title={fullDate(device.lastReceivedAt)}>
-          {device.lastReceivedAt == null ? 'Sin datos' : relTime(device.lastReceivedAt)}
+          {device.lastReceivedAt == null ? 'No data' : relTime(device.lastReceivedAt)}
         </p>
         <p className="an-sub">
           {device.lastReceivedAt == null
-            ? 'El reloj aún no ha enviado ningún lote.'
+            ? 'The watch has not sent any batch yet.'
             : stale
-              ? 'Más de 5 min sin lotes: revisa conexión del reloj.'
-              : 'El reloj está sincronizando.'}
+              ? 'No batches for over 5 min: check the watch connection.'
+              : 'The watch is syncing.'}
         </p>
       </article>
       <article className="an-card">
-        <h3>Muestras por minuto</h3>
+        <h3>Samples per minute</h3>
         <p className="an-big" data-tone={rateRatio != null && rateRatio < 0.7 ? 'warn' : 'live'}>
-          {rate == null ? '—' : fmtNum(rate)}
+          {rate == null ? '--' : fmtNum(rate)}
           <span className="an-unit"> / min</span>
         </p>
         <p className="an-sub">
-          Real (sin huecos) frente a {fmtNum(device.nominalSamplesPerMinute)} / min nominal.{' '}
+          Actual (excluding gaps) vs. {fmtNum(device.nominalSamplesPerMinute)} / min nominal.{' '}
           {device.gaps24h > 0
-            ? `${device.gaps24h} hueco${device.gaps24h === 1 ? '' : 's'} en 24 h (mayor: ${fmtDuration(device.maxGapMs24h)}).`
-            : 'Sin huecos en 24 h.'}
+            ? `${device.gaps24h} gap${device.gaps24h === 1 ? '' : 's'} in 24 h (longest: ${fmtDuration(device.maxGapMs24h)}).`
+            : 'No gaps in 24 h.'}
         </p>
       </article>
       <article className="an-card">
-        <h3>Lotes en 24 h</h3>
+        <h3>Batches in 24 h</h3>
         <p className="an-big">
           <span data-tone="live">{device.batchesOk24h}</span>
           <span className="an-unit"> ok · </span>
           <span data-tone={device.batchesRejected24h > 0 ? 'bad' : undefined}>
             {device.batchesRejected24h}
           </span>
-          <span className="an-unit"> rechazados</span>
+          <span className="an-unit"> rejected</span>
         </p>
         <p className="an-sub">
           {device.batchesRejected24h > 0
-            ? 'Hay rechazos: consulta el registro de ingesta para ver el motivo.'
-            : 'Sin rechazos de validación.'}
+            ? 'Some batches were rejected: see the ingest log for the reason.'
+            : 'No validation rejections.'}
         </p>
       </article>
       <article className="an-card">
-        <h3>Lecturas</h3>
+        <h3>Readings</h3>
         <p className="an-big">
-          {device.totalReadings.toLocaleString('es')}
+          {device.totalReadings.toLocaleString('en-US')}
           <span className="an-unit"> total</span>
         </p>
         <p className="an-sub">
-          {device.readingsLast24h.toLocaleString('es')} en 24 h
+          {device.readingsLast24h.toLocaleString('en-US')} in 24 h
           {device.appVersion ? ` · app ${device.appVersion}` : ''}
         </p>
       </article>

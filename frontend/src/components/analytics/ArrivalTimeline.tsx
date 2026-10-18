@@ -28,11 +28,11 @@ export function ArrivalTimeline({ data }: { data: TimelineData }) {
   const total = rows.reduce((a, r) => a + r.readings, 0)
   const summary =
     total === 0
-      ? 'Sin lecturas en el periodo.'
-      : `${total} lecturas en ${data.hours} h; ${gapBuckets} intervalo${gapBuckets === 1 ? '' : 's'} de ${fmtDuration(data.bucketMs)} sin datos.`
+      ? 'No readings in this period.'
+      : `${total} readings in ${data.hours} h; ${gapBuckets} ${fmtDuration(data.bucketMs)} interval${gapBuckets === 1 ? '' : 's'} without data.`
   return (
     <div>
-      <div role="img" aria-label={`Llegada de lecturas por intervalo. ${summary}`} className="an-chart">
+      <div role="img" aria-label={`Readings arriving per interval. ${summary}`} className="an-chart">
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: -12 }} barCategoryGap={1}>
             <CartesianGrid stroke="rgba(94,224,160,0.12)" vertical={false} />
@@ -59,8 +59,8 @@ export function ArrivalTimeline({ data }: { data: TimelineData }) {
               }}
               labelStyle={{ color: '#5EE0A0' }}
               formatter={(value, name) => {
-                if (name === 'gap') return ['sin datos', 'Hueco']
-                return [String(value), name === 'readings' ? 'Lecturas' : 'Lotes rechazados']
+                if (name === 'gap') return ['no data', 'Gap']
+                return [String(value), name === 'readings' ? 'Readings' : 'Rejected batches']
               }}
             />
             <Bar dataKey="readings" stackId="a" fill="#5EE0A0" isAnimationActive={false} />
@@ -69,9 +69,9 @@ export function ArrivalTimeline({ data }: { data: TimelineData }) {
         </ResponsiveContainer>
       </div>
       <p className="an-legend">
-        <span className="an-dot an-dot--live" aria-hidden="true" /> Lecturas por intervalo de{' '}
+        <span className="an-dot an-dot--live" aria-hidden="true" /> Readings per{' '}
         {fmtDuration(data.bucketMs)}
-        <span className="an-dot an-dot--gap" aria-hidden="true" /> Hueco (sin lecturas desde la primera recibida)
+        <span className="an-dot an-dot--gap" aria-hidden="true" /> Gap (no readings since the first one received)
       </p>
       <p className="an-sr">{summary}</p>
     </div>
