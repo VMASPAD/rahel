@@ -9,6 +9,7 @@ import androidx.health.services.client.data.DataPointContainer
 import androidx.health.services.client.data.DataType
 import androidx.health.services.client.data.DeltaDataType
 import androidx.health.services.client.data.SampleDataPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -47,6 +48,8 @@ internal class WearHealthServicesBridge(context: Context) {
                     "Health Services does not list $dataType for MeasureClient",
                 )
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             SensorAvailability(
                 SensorAvailabilityState.UNAVAILABLE,

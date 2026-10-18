@@ -21,6 +21,8 @@ data class TelemetryBatchRequest(
     val clientBatchId: String,
     val readings: List<SensorReadingDto> = emptyList(),
     val assessments: List<HealthAssessmentDto> = emptyList(),
+    /** App version, logged by the backend for analytics (optional on the server). */
+    val appVersion: String? = null,
 )
 
 data class TelemetryBatchResponse(
@@ -30,14 +32,15 @@ data class TelemetryBatchResponse(
 
 data class SensorReadingDto(
     val recordedAtEpochMs: Long,
-    val heartRateBpm: Int,
-    val restingHeartRateBpm: Int,
-    val hrvMs: Int,
-    val spO2Percent: Int,
-    val stepsToday: Int,
-    val sleepHoursLastNight: Float,
-    val skinTempCelsius: Float,
-    val stressScore: Int,
+    // Vitals are nullable: null = not measured (never 0 as a placeholder).
+    val heartRateBpm: Int? = null,
+    val restingHeartRateBpm: Int? = null,
+    val hrvMs: Int? = null,
+    val spO2Percent: Int? = null,
+    val stepsToday: Int? = null,
+    val sleepHoursLastNight: Float? = null,
+    val skinTempCelsius: Float? = null,
+    val stressScore: Int? = null,
     val missionDay: Int,
     val microgravity: Boolean,
     val isolationIndex: Float,

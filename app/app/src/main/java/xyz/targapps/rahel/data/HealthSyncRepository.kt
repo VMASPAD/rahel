@@ -1,6 +1,7 @@
 package xyz.targapps.rahel.data
 
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import xyz.targapps.rahel.data.local.QueuedReadingDao
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,6 +72,8 @@ class DefaultHealthSyncRepository(
                 lastUploadAt = Instant.now(),
             )
             Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             _syncStatus.value = _syncStatus.value.copy(
                 isSyncing = false,

@@ -78,11 +78,11 @@ class WearPlatformSensorHub(
     private fun mapUiAvailability(
         map: Map<SensorChannelId, SensorAvailability>,
     ): List<UiSensorAvailability> = listOf(
-        uiRow(SensorKind.HEART_RATE, "FC", map, SensorChannelId.HEART_RATE, SensorChannelId.HEART_RATE_HEALTH_SERVICES),
+        uiRow(SensorKind.HEART_RATE, "HR", map, SensorChannelId.HEART_RATE, SensorChannelId.HEART_RATE_HEALTH_SERVICES),
         uiRow(SensorKind.SPO2, "SpO₂", map, SensorChannelId.SPO2),
-        uiRow(SensorKind.MOTION, "Movimiento", map, SensorChannelId.ACCELEROMETER, SensorChannelId.GYROSCOPE),
-        uiRow(SensorKind.STEPS, "Pasos", map, SensorChannelId.STEP_COUNTER, SensorChannelId.STEP_DETECTOR),
-        uiRow(SensorKind.BAROMETER, "Barómetro", map, SensorChannelId.BAROMETER),
+        uiRow(SensorKind.MOTION, "Motion", map, SensorChannelId.ACCELEROMETER, SensorChannelId.GYROSCOPE),
+        uiRow(SensorKind.STEPS, "Steps", map, SensorChannelId.STEP_COUNTER, SensorChannelId.STEP_DETECTOR),
+        uiRow(SensorKind.BAROMETER, "Barometer", map, SensorChannelId.BAROMETER),
     )
 
     private fun uiRow(
@@ -103,10 +103,10 @@ class WearPlatformSensorHub(
     private fun DerivedSensorSnapshot.toLiveMetrics(): LiveSensorMetrics {
         val d = dynamics
         val motionLabel = when (d.activityLevel) {
-            ApproximateActivityLevel.STATIONARY -> "Estacionario"
-            ApproximateActivityLevel.LIGHT -> "Ligero"
-            ApproximateActivityLevel.MODERATE -> "Moderado"
-            ApproximateActivityLevel.VIGOROUS -> "Vigoroso"
+            ApproximateActivityLevel.STATIONARY -> "Stationary"
+            ApproximateActivityLevel.LIGHT -> "Light"
+            ApproximateActivityLevel.MODERATE -> "Moderate"
+            ApproximateActivityLevel.VIGOROUS -> "Vigorous"
         }
         return LiveSensorMetrics(
             heartRateBpm = d.hrResting ?: heartRateBpm,

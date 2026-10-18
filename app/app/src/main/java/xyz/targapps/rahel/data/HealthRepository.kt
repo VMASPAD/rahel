@@ -16,14 +16,21 @@ interface HealthRepository {
     suspend fun enqueueReading(snapshot: HealthSnapshot) {}
 
     /** Queue baseline profile for POST /profile after onboarding. */
-    suspend fun enqueueProfileSnapshot(crewMemberId: String = "CMD-01") {}
+    suspend fun enqueueProfileSnapshot(crewMemberId: String) {}
 
-    /** After each assessment cycle: queue reading + assessment (+ profile) and try sync. */
-    suspend fun recordAssessmentCycle(snapshot: HealthSnapshot, assessment: HealthAssessment) {
+    /**
+     * Queue reading + assessment when the sample is valid (real HR, on wrist, paired crew member).
+     * Returns true if something was queued. Upload happens in a single background sync job.
+     */
+    suspend fun recordAssessmentCycle(snapshot: HealthSnapshot, assessment: HealthAssessment): Boolean {
         enqueueReading(snapshot)
+        return false
     }
 
-    /** Upload pending queue rows; returns count of items successfully synced. */
+    /**
+     * Upload pending queue rows; returns count of items successfully synced.
+     * Throws on network/5xx failures so callers can retry.
+     */
     suspend fun syncPending(): Int = 0
 }
 

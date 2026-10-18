@@ -13,16 +13,22 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import xyz.targapps.rahel.data.sensors.DerivedSensorSnapshot
 import xyz.targapps.rahel.data.sensors.SensorAvailability
+import xyz.targapps.rahel.data.sensors.SensorAvailabilityState
 import xyz.targapps.rahel.data.sensors.SensorChannelId
 import xyz.targapps.rahel.data.sensors.SensorCollector
 import xyz.targapps.rahel.data.sensors.SensorReading
 import xyz.targapps.rahel.data.sensors.SensorTelemetrySource
+import xyz.targapps.rahel.domain.ApproximateActivityLevel
 import xyz.targapps.rahel.domain.HealthSnapshot
 import xyz.targapps.rahel.domain.MissionContext
 import xyz.targapps.rahel.domain.MissionDynamicVitals
+import xyz.targapps.rahel.domain.SensorVitals
 import xyz.targapps.rahel.domain.VitalSigns
-import xyz.targapps.rahel.seed.SeedData
 import xyz.targapps.rahel.seed.SeedProfile
+import xyz.targapps.rahel.sensor.LiveSensorMetrics
+import xyz.targapps.rahel.sensor.SensorAvailability as UiSensorAvailability
+import xyz.targapps.rahel.sensor.SensorHub
+import xyz.targapps.rahel.sensor.SensorKind
 import java.time.Instant
 import java.util.ArrayDeque
 
@@ -31,7 +37,7 @@ import java.util.ArrayDeque
  */
 class DeviceSensorHealthRepository(
     context: Context,
-    private val crewMemberId: String = "CMD-01",
+    initialCrewMemberId: String = "", // blank until the watch is paired
     private val missionContext: MissionContext = MissionContext(
         missionDay = 1,
         isolationIndex = 0.3f,
@@ -39,15 +45,25 @@ class DeviceSensorHealthRepository(
     ),
 ) : HealthRepository,
     HealthDataSource,
-    SensorTelemetrySource {
+    SensorTelemetrySource,
+    SensorHub {
+
+    @Volatile
+    private var crewMemberId: String = initialCrewMemberId
 
     private val sensorHub = SensorCollector(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val historyBuffer = ArrayDeque<HealthSnapshot>(32)
-    private var seedProfile: SeedProfile = SeedProfile.HEALTHY_CREW
+    private var collectionStarted = false
 
     private val _latestSnapshot = MutableStateFlow<HealthSnapshot?>(null)
+
+    private val _availabilityUi = MutableStateFlow(defaultUiAvailability())
+    override val availability: StateFlow<List<UiSensorAvailability>> = _availabilityUi.asStateFlow()
+
+    private val _liveMetrics = MutableStateFlow(LiveSensorMetrics())
+    override val liveMetrics: StateFlow<LiveSensorMetrics> = _liveMetrics.asStateFlow()
 
     override val sensorAvailability: StateFlow<Map<SensorChannelId, SensorAvailability>> =
         sensorHub.availability
@@ -67,11 +83,14 @@ class DeviceSensorHealthRepository(
     init {
         scope.launch {
             sensorHub.refreshAvailability()
-            sensorHub.startCollection()
+            sensorHub.availability.collect { map ->
+                _availabilityUi.value = mapUiAvailability(map)
+            }
         }
         scope.launch {
             sensorHub.derived.collect { derived ->
-                val snap = applySeedOverlay(
+                _liveMetrics.value = derived.toLiveMetrics()
+                val snap = withAmbientLight(
                     derived.toHealthSnapshot(crewMemberId, missionContext),
                     derived.lightLux,
                 )
@@ -84,55 +103,48 @@ class DeviceSensorHealthRepository(
                 }
             }
         }
+        _latestSnapshot.value = null
     }
 
     override fun liveSnapshots(): Flow<HealthSnapshot> = currentSnapshot
+
+    fun setCrewMemberId(id: String) {
+        if (id == crewMemberId) return
+        crewMemberId = id
+        _latestSnapshot.value = _latestSnapshot.value?.copy(crewMemberId = id)
+    }
+
+    /** Detected-sensor inventory for the analytics endpoint; null until collection has warmed up. */
+    fun buildSensorInventory(): xyz.targapps.rahel.data.remote.DeviceSensorsRequest? =
+        sensorHub.buildInventory()
 
     override suspend fun refreshSensorAvailability() {
         sensorHub.refreshAvailability()
     }
 
+    override fun refreshAvailability() {
+        scope.launch { sensorHub.refreshAvailability() }
+    }
+
     override fun startSensorCollection() {
+        collectionStarted = true
+        // Idempotent: also re-registers sensors that failed earlier (permissions granted later).
         sensorHub.startCollection()
     }
 
     override fun stopSensorCollection() {
+        collectionStarted = false
         sensorHub.stopCollection()
     }
 
-    override fun setSeedProfile(profile: SeedProfile) {
-        seedProfile = profile
-        historyBuffer.clear()
-        SeedData.historyFor(profile).forEach { historyBuffer.addLast(it) }
-        _latestSnapshot.value = applySeedOverlay(
-            SeedData.snapshot(profile, crewMemberId),
-            ambientLightLux = null,
-        )
+    override fun setSeedProfile(_profile: SeedProfile) {
+        // Seed demos disabled — vitals come only from device sensors.
     }
 
-    /**
-     * Demo SEED overlays mission/vitals from [SeedData] while keeping live HR/SpO₂ when present.
-     */
-    private fun applySeedOverlay(base: HealthSnapshot, ambientLightLux: Float?): HealthSnapshot {
-        if (seedProfile == SeedProfile.HEALTHY_CREW) {
-            val lux = ambientLightLux ?: base.mission.ambientLightLux
-            return if (lux == null) base else base.copy(
-                mission = base.mission.copy(ambientLightLux = lux),
-            )
-        }
-        val seed = SeedData.snapshot(seedProfile, base.crewMemberId)
-        val liveHr = base.vitals.heartRateBpm.takeIf { it > 0 }
-        val liveSpo2 = base.vitals.spO2Percent.takeIf { it > 0 }
-        val lux = ambientLightLux ?: seed.mission.ambientLightLux
-        return seed.copy(
-            timestamp = base.timestamp,
-            vitals = seed.vitals.copy(
-                heartRateBpm = liveHr ?: seed.vitals.heartRateBpm,
-                spO2Percent = liveSpo2 ?: seed.vitals.spO2Percent,
-                skinTempCelsius = base.vitals.skinTempCelsius.takeIf { it > 0f }
-                    ?: seed.vitals.skinTempCelsius,
-            ),
-            mission = seed.mission.copy(ambientLightLux = lux),
+    private fun withAmbientLight(base: HealthSnapshot, ambientLightLux: Float?): HealthSnapshot {
+        val lux = ambientLightLux ?: base.mission.ambientLightLux
+        return if (lux == null) base else base.copy(
+            mission = base.mission.copy(ambientLightLux = lux),
         )
     }
 
@@ -158,6 +170,7 @@ class DeviceSensorHealthRepository(
     ): HealthSnapshot {
         val d = dynamics
         val hr = d.hrResting ?: heartRateBpm ?: 0
+        val measuredHr = (heartRateBpm ?: d.hrResting)?.takeIf { it > 0 }
         return HealthSnapshot(
             timestamp = timestamp,
             crewMemberId = crewId,
@@ -166,17 +179,81 @@ class DeviceSensorHealthRepository(
                 restingHeartRateBpm = if (d.motion == 0) hr else (d.hrResting ?: hr),
                 hrvMs = d.hrvMs ?: 0,
                 spO2Percent = d.spo2Pct ?: 0,
-                stepsToday = d.stepsSession.toInt(),
+                stepsToday = stepsToday ?: 0,
                 sleepHoursLastNight = 0f,
-                skinTempCelsius = ambientTempCelsius ?: 0f,
+                skinTempCelsius = 0f,
                 stressScore = when (d.activityLevel) {
-                    xyz.targapps.rahel.domain.ApproximateActivityLevel.STATIONARY -> 20
-                    xyz.targapps.rahel.domain.ApproximateActivityLevel.LIGHT -> 35
-                    xyz.targapps.rahel.domain.ApproximateActivityLevel.MODERATE -> 55
-                    xyz.targapps.rahel.domain.ApproximateActivityLevel.VIGOROUS -> 75
+                    ApproximateActivityLevel.STATIONARY -> 20
+                    ApproximateActivityLevel.LIGHT -> 35
+                    ApproximateActivityLevel.MODERATE -> 55
+                    ApproximateActivityLevel.VIGOROUS -> 75
                 },
             ),
             mission = mission,
+            sensorVitals = SensorVitals(
+                heartRateBpm = measuredHr,
+                restingHeartRateBpm = if (d.motion == 0) measuredHr else null,
+                // The watch only exposes BPM (no RR intervals): the on-device HRV is an estimate, not uploaded.
+                hrvMs = null,
+                spO2Percent = d.spo2Pct,
+                stepsToday = stepsToday,
+                // No skin-temperature sensor: ambient temperature must never be reported as skin temp.
+                skinTempCelsius = null,
+                onWrist = d.offBody?.let { !it },
+                sampleAtEpochMs = if (measuredHr != null) heartRateAt?.toEpochMilli() else null,
+            ),
         )
     }
+
+    private fun DerivedSensorSnapshot.toLiveMetrics(): LiveSensorMetrics {
+        val d = dynamics
+        val motionLabel = when (d.activityLevel) {
+            ApproximateActivityLevel.STATIONARY -> "Stationary"
+            ApproximateActivityLevel.LIGHT -> "Light"
+            ApproximateActivityLevel.MODERATE -> "Moderate"
+            ApproximateActivityLevel.VIGOROUS -> "Vigorous"
+        }
+        return LiveSensorMetrics(
+            heartRateBpm = d.hrResting ?: heartRateBpm,
+            spO2Percent = d.spo2Pct,
+            motionLabel = motionLabel,
+            motionMagnitude = d.deltaAz,
+            stepsToday = stepsToday,
+            pressureHpa = barometerHpa,
+            updatedAt = timestamp,
+        )
+    }
+
+    private fun mapUiAvailability(
+        map: Map<SensorChannelId, SensorAvailability>,
+    ): List<UiSensorAvailability> = listOf(
+        uiRow(SensorKind.HEART_RATE, "HR", map, SensorChannelId.HEART_RATE, SensorChannelId.HEART_RATE_HEALTH_SERVICES),
+        uiRow(SensorKind.SPO2, "SpO₂", map, SensorChannelId.SPO2),
+        uiRow(SensorKind.MOTION, "Motion", map, SensorChannelId.ACCELEROMETER, SensorChannelId.GYROSCOPE),
+        uiRow(SensorKind.STEPS, "Steps", map, SensorChannelId.STEP_COUNTER, SensorChannelId.STEP_DETECTOR),
+        uiRow(SensorKind.BAROMETER, "Barometer", map, SensorChannelId.BAROMETER),
+    )
+
+    private fun uiRow(
+        kind: SensorKind,
+        label: String,
+        map: Map<SensorChannelId, SensorAvailability>,
+        vararg channels: SensorChannelId,
+    ): UiSensorAvailability {
+        val available = channels.any { map[it]?.state == SensorAvailabilityState.AVAILABLE }
+        val reason = channels.firstNotNullOfOrNull { map[it]?.reason }
+        return UiSensorAvailability(
+            kind = kind,
+            available = available,
+            displayName = if (reason != null && !available) "$label ($reason)" else label,
+        )
+    }
+
+    private fun defaultUiAvailability(): List<UiSensorAvailability> = listOf(
+        UiSensorAvailability(SensorKind.HEART_RATE, false, "HR"),
+        UiSensorAvailability(SensorKind.SPO2, false, "SpO₂"),
+        UiSensorAvailability(SensorKind.MOTION, false, "Motion"),
+        UiSensorAvailability(SensorKind.STEPS, false, "Steps"),
+        UiSensorAvailability(SensorKind.BAROMETER, false, "Barometer"),
+    )
 }

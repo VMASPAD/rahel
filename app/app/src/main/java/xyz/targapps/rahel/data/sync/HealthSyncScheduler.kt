@@ -1,6 +1,7 @@
 package xyz.targapps.rahel.data.sync
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -13,7 +14,7 @@ import java.util.concurrent.TimeUnit
 /**
  * WorkManager schedule for offline-first upload:
  * - **Periodic:** every 15 minutes when network is connected (platform minimum interval).
- * - **One-shot:** enqueued after each assessment cycle for faster upload when online.
+ * - **One-shot:** unique job (KEEP) enqueued after each recorded sample (~every 30 s) for faster upload.
  */
 object HealthSyncScheduler {
 
@@ -43,11 +44,13 @@ object HealthSyncScheduler {
 
         val request = OneTimeWorkRequestBuilder<HealthSyncWorker>()
             .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(
             ONE_SHOT_WORK_NAME,
-            ExistingWorkPolicy.REPLACE,
+            // KEEP: a single chained job; rows queued while it runs are picked up by the next one.
+            ExistingWorkPolicy.KEEP,
             request,
         )
     }

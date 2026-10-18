@@ -12,9 +12,9 @@ fun ZScoreEvaluation.toUiLevel(): AlertLevel = when (band) {
 }
 
 fun PhysiologicalMetric.spanishLabel(): String = when (this) {
-    PhysiologicalMetric.RESTING_HEART_RATE -> "FC reposo"
+    PhysiologicalMetric.RESTING_HEART_RATE -> "Resting HR"
     PhysiologicalMetric.HEART_RATE -> "FC"
     PhysiologicalMetric.HRV_7D_MEAN -> "HRV 7d"
     PhysiologicalMetric.SPO2 -> "SpO₂"
-    PhysiologicalMetric.SKIN_TEMPERATURE -> "Temp. piel"
+    PhysiologicalMetric.SKIN_TEMPERATURE -> "Skin temp"
 }

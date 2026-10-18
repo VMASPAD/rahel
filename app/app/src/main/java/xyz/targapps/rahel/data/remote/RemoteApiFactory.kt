@@ -1,10 +1,13 @@
 package xyz.targapps.rahel.data.remote
 
+import com.google.gson.GsonBuilder
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import xyz.targapps.rahel.BuildConfig
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -23,11 +26,43 @@ object RemoteApiFactory {
     fun createHealthApiService(
         baseUrl: String = BuildConfig.API_BASE_URL,
         enableLogging: Boolean = BuildConfig.DEBUG,
-    ): HealthApiService {
+        deviceTokenProvider: (() -> String?)? = null,
+    ): HealthApiService = createRetrofit(baseUrl, enableLogging, deviceTokenProvider)
+        .create(HealthApiService::class.java)
+
+    fun createPairingApiService(
+        baseUrl: String = BuildConfig.API_BASE_URL,
+        enableLogging: Boolean = BuildConfig.DEBUG,
+    ): PairingApiService = createRetrofit(baseUrl, enableLogging, null)
+        .create(PairingApiService::class.java)
+
+    private fun createRetrofit(
+        baseUrl: String,
+        enableLogging: Boolean,
+        deviceTokenProvider: (() -> String?)?,
+    ): Retrofit {
         val clientBuilder = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(25, TimeUnit.SECONDS)
+
+        if (deviceTokenProvider != null) {
+            clientBuilder.addInterceptor(
+                Interceptor { chain ->
+                    val token = deviceTokenProvider()
+                    // Authenticated endpoints always need the X-Device-Token header; without it do not hit the network.
+                    if (token.isNullOrBlank()) {
+                        throw IOException("Device not paired: no device token")
+                    }
+                    chain.proceed(
+                        chain.request().newBuilder()
+                            .header("X-Device-Token", token)
+                            .build(),
+                    )
+                },
+            )
+        }
 
         if (enableLogging) {
             clientBuilder.addInterceptor(
@@ -37,12 +72,11 @@ object RemoteApiFactory {
             )
         }
 
-        val retrofit = Retrofit.Builder()
+        return Retrofit.Builder()
             .baseUrl(baseUrl)
             .client(clientBuilder.build())
-            .addConverterFactory(GsonConverterFactory.create())
+            // Explicit nulls: unmeasured vitals are sent as null (never 0).
+            .addConverterFactory(GsonConverterFactory.create(GsonBuilder().serializeNulls().create()))
             .build()
-
-        return retrofit.create(HealthApiService::class.java)
     }
 }

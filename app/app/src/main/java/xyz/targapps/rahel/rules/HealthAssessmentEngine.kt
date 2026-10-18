@@ -170,17 +170,17 @@ class HealthAssessmentEngine(
                 }
                 ConditionAssessment(
                     conditionId = "z_${z.metric.name.lowercase()}",
-                    title = "Desviación Z: ${z.metric.name}",
+                    title = "Z deviation: ${z.metric.name}",
                     category = NasaRiskCategory.CARDIO,
-                    summary = "Z=${"%.2f".format(z.zScore)} vs línea base personal (μ=${"%.1f".format(z.muBase)}, σ=${"%.1f".format(z.sigmaBase)}).",
+                    summary = "Z=${"%.2f".format(z.zScore)} vs personal baseline (μ=${"%.1f".format(z.muBase)}, σ=${"%.1f".format(z.sigmaBase)}).",
                     confidence = 0.7f,
                     severity = severity,
                     symptoms = emptyList(),
                     recommendedActions = listOf(
                         RecommendedAction(
                             "trend",
-                            "Seguimiento",
-                            "Registrar contexto (sueño, ejercicio, hidratación) y repetir medición en reposo.",
+                            "Follow-up",
+                            "Log context (sleep, exercise, hydration) and repeat the measurement at rest.",
                         ),
                     ),
                 )
@@ -200,7 +200,7 @@ class HealthAssessmentEngine(
                 recommendedActions = listOf(
                     RecommendedAction(
                         event.eventId.name.lowercase(),
-                        "Protocolo",
+                        "Protocol",
                         event.suggestedAction,
                     ),
                 ),
@@ -214,9 +214,9 @@ class HealthAssessmentEngine(
         val overall = rankToLevel(overallRank)
         val headline = when (overall) {
             AlertLevel.NOMINAL -> legacy.headline
-            AlertLevel.WATCH -> "Vigilar tendencias"
-            AlertLevel.ELEVATED -> "Atención recomendada"
-            AlertLevel.CRITICAL -> "Acción prioritaria"
+            AlertLevel.WATCH -> "Watch trends"
+            AlertLevel.ELEVATED -> "Attention recommended"
+            AlertLevel.CRITICAL -> "Priority action"
         }
 
         return legacy.copy(overallLevel = maxLevel(legacy.overallLevel, overall), headline = headline, conditions = conditions)
@@ -239,10 +239,10 @@ class HealthAssessmentEngine(
             ?: AlertLevel.NOMINAL
 
         val headline = when (overall) {
-            AlertLevel.NOMINAL -> "Estado nominal"
-            AlertLevel.WATCH -> "Vigilar tendencias"
-            AlertLevel.ELEVATED -> "Atención recomendada"
-            AlertLevel.CRITICAL -> "Acción prioritaria"
+            AlertLevel.NOMINAL -> "Nominal status"
+            AlertLevel.WATCH -> "Watch trends"
+            AlertLevel.ELEVATED -> "Attention recommended"
+            AlertLevel.CRITICAL -> "Priority action"
         }
 
         return AssessmentResult(overallLevel = overall, headline = headline, conditions = conditions)
@@ -292,32 +292,32 @@ class HealthAssessmentEngine(
         }
         val symptoms = buildList {
             if (v.sleepHoursLastNight < SpaceHealthThresholds.SLEEP_HOURS_WATCH) {
-                add(Symptom("poor_sleep", "Sueño insuficiente", SymptomSeverity.MODERATE))
+                add(Symptom("poor_sleep", "Insufficient sleep", SymptomSeverity.MODERATE))
             }
             if (v.hrvMs < SpaceHealthThresholds.HRV_MS_LOW) {
-                add(Symptom("low_hrv", "HRV baja", SymptomSeverity.MILD))
+                add(Symptom("low_hrv", "Low HRV", SymptomSeverity.MILD))
             }
             if (v.stressScore >= SpaceHealthThresholds.STRESS_SCORE_HIGH) {
-                add(Symptom("high_stress", "Estrés elevado", SymptomSeverity.MODERATE))
+                add(Symptom("high_stress", "Elevated stress", SymptomSeverity.MODERATE))
             }
             if (m.isolationIndex >= SpaceHealthThresholds.ISOLATION_INDEX_HIGH) {
-                add(Symptom("isolation", "Aislamiento prolongado", SymptomSeverity.MILD))
+                add(Symptom("isolation", "Prolonged isolation", SymptomSeverity.MILD))
             }
         } + s.selfReportedSymptoms.filter { it.id in setOf("irritability", "anxiety") }
 
         return listOf(
             ConditionAssessment(
                 conditionId = "behavioral_stress",
-                title = "Salud conductual / sueño",
+                title = "Behavioral health / sleep",
                 category = NasaRiskCategory.BEHAVIORAL,
-                summary = "Patrón compatible con privación de sueño, estrés o confinamiento.",
+                summary = "Pattern consistent with sleep deprivation, stress, or confinement.",
                 confidence = 0.72f,
                 severity = severity,
                 symptoms = symptoms.distinctBy { it.id },
                 recommendedActions = listOf(
-                    RecommendedAction("sleep_hygiene", "Higiene del sueño", "Ventana oscura 8h, luz azul mínima pre-sueño."),
-                    RecommendedAction("journaling", "Registro emocional", "2 min: estado de ánimo y factores estresores."),
-                    RecommendedAction("crew_contact", "Contacto tripulación", "Check-in social con un compañero hoy."),
+                    RecommendedAction("sleep_hygiene", "Sleep hygiene", "8 h dark window, minimal blue light before sleep."),
+                    RecommendedAction("journaling", "Mood log", "2 min: mood and stressors."),
+                    RecommendedAction("crew_contact", "Crew contact", "Social check-in with a crewmate today."),
                 ),
             ),
         )
@@ -330,14 +330,14 @@ class HealthAssessmentEngine(
                 history.first().vitals.restingHeartRateBpm + SpaceHealthThresholds.RESTING_HR_TREND_BPM
 
         if (v.restingHeartRateBpm < SpaceHealthThresholds.RESTING_HR_ELEVATED &&
-            v.spO2Percent >= SpaceHealthThresholds.SPO2_WATCH &&
+            (v.spO2Percent <= 0 || v.spO2Percent >= SpaceHealthThresholds.SPO2_WATCH) &&
             !restingTrendUp
         ) {
             return emptyList()
         }
 
         val severity = when {
-            v.spO2Percent < SpaceHealthThresholds.SPO2_CRITICAL || v.heartRateBpm > 110 -> AlertLevel.ELEVATED
+            (v.spO2Percent in 1 until SpaceHealthThresholds.SPO2_CRITICAL) || v.heartRateBpm > 110 -> AlertLevel.ELEVATED
             v.restingHeartRateBpm >= 75 || restingTrendUp -> AlertLevel.WATCH
             else -> AlertLevel.WATCH
         }
@@ -345,23 +345,23 @@ class HealthAssessmentEngine(
         return listOf(
             ConditionAssessment(
                 conditionId = "cardio_deconditioning",
-                title = "Carga cardiovascular",
+                title = "Cardiovascular load",
                 category = NasaRiskCategory.CARDIO,
-                summary = "Posible desacondicionamiento o estrés cardiaco en microgravedad.",
+                summary = "Possible deconditioning or cardiac strain in microgravity.",
                 confidence = if (restingTrendUp) 0.68f else 0.55f,
                 severity = severity,
                 symptoms = listOfNotNull(
                     if (v.restingHeartRateBpm >= SpaceHealthThresholds.RESTING_HR_ELEVATED) {
-                        Symptom("high_rhr", "FC reposo elevada", SymptomSeverity.MILD)
+                        Symptom("high_rhr", "Elevated resting HR", SymptomSeverity.MILD)
                     } else {
                         null
                     },
-                    if (restingTrendUp) Symptom("rhr_trend", "Tendencia FC ↑", SymptomSeverity.MODERATE) else null,
+                    if (restingTrendUp) Symptom("rhr_trend", "HR trend ↑", SymptomSeverity.MODERATE) else null,
                 ) + current.selfReportedSymptoms.filter { it.id == "palpitations" },
                 recommendedActions = listOf(
-                    RecommendedAction("aerobic", "Ejercicio aeróbico", "30 min cinta/ergómetro según protocolo de vuelo."),
-                    RecommendedAction("hydration", "Hidratación", "Revisar ingesta hídrica y electrolitos."),
-                    RecommendedAction("medical", "Médico de vuelo", "Informar si síntomas persisten >24h."),
+                    RecommendedAction("aerobic", "Aerobic exercise", "30 min treadmill/ergometer per flight protocol."),
+                    RecommendedAction("hydration", "Hydration", "Review fluid intake and electrolytes."),
+                    RecommendedAction("medical", "Flight surgeon", "Report if symptoms persist >24 h."),
                 ),
             ),
         )
@@ -377,9 +377,9 @@ class HealthAssessmentEngine(
         return listOf(
             ConditionAssessment(
                 conditionId = "bone_loading",
-                title = "Carga ósea insuficiente",
+                title = "Insufficient bone loading",
                 category = NasaRiskCategory.BONE,
-                summary = "Baja actividad mecánica — riesgo de desmineralización en misión larga (~1–1.5% DMO/mes en µG).",
+                summary = "Low mechanical activity — risk of demineralization on long missions (~1–1.5% BMD/month in µG).",
                 confidence = 0.61f,
                 severity = if (v.stepsToday < SpaceHealthThresholds.STEPS_BONE_ELEVATED) {
                     AlertLevel.ELEVATED
@@ -387,10 +387,10 @@ class HealthAssessmentEngine(
                     AlertLevel.WATCH
                 },
                 symptoms = s.selfReportedSymptoms.filter { it.id == "bone_ache" } +
-                    listOf(Symptom("low_activity", "Actividad baja", SymptomSeverity.MILD)),
+                    listOf(Symptom("low_activity", "Low activity", SymptomSeverity.MILD)),
                 recommendedActions = listOf(
-                    RecommendedAction("resistance", "Resistencia", "ARED / bandas: sesión prescrita hoy."),
-                    RecommendedAction("vit_d_ca", "Nutrición ósea", "Verificar vitamina D y calcio con nutrición."),
+                    RecommendedAction("resistance", "Resistance", "ARED / bands: prescribed session today."),
+                    RecommendedAction("vit_d_ca", "Bone nutrition", "Check vitamin D and calcium with nutrition."),
                 ),
             ),
         )
@@ -406,16 +406,16 @@ class HealthAssessmentEngine(
         return listOf(
             ConditionAssessment(
                 conditionId = "immune_proxy",
-                title = "Resiliencia inmune (proxy)",
+                title = "Immune resilience (proxy)",
                 category = NasaRiskCategory.IMMUNE,
-                summary = "Combinación de fatiga, estrés y sueño — asociada a inmunosupresión relativa en espacio.",
+                summary = "Combined fatigue, stress, and sleep issues — associated with relative immunosuppression in space.",
                 confidence = 0.58f,
                 severity = if (score >= 3) AlertLevel.ELEVATED else AlertLevel.WATCH,
                 symptoms = s.selfReportedSymptoms.filter { it.id == "fatigue" } +
-                    listOf(Symptom("immune_risk", "Marcadores de riesgo inmune", SymptomSeverity.MILD)),
+                    listOf(Symptom("immune_risk", "Immune risk markers", SymptomSeverity.MILD)),
                 recommendedActions = listOf(
-                    RecommendedAction("rest", "Recuperación", "Priorizar sueño y reducir carga extra."),
-                    RecommendedAction("nutrition", "Nutrición", "Comida completa; evitar déficit calórico."),
+                    RecommendedAction("rest", "Recovery", "Prioritize sleep and reduce extra workload."),
+                    RecommendedAction("nutrition", "Nutrition", "Eat full meals; avoid a calorie deficit."),
                 ),
             ),
         )
@@ -428,38 +428,39 @@ class HealthAssessmentEngine(
         return listOf(
             ConditionAssessment(
                 conditionId = "radiation_exposure",
-                title = "Exposición radiación (proxy)",
+                title = "Radiation exposure (proxy)",
                 category = NasaRiskCategory.RADIATION_PROXY,
-                summary = "Dosis acumulada elevada en simulación — vigilar síntomas y protocolo de refugio.",
+                summary = "Elevated cumulative dose in simulation — monitor symptoms and shelter protocol.",
                 confidence = 0.5f,
                 severity = if (dose >= 40f) AlertLevel.WATCH else AlertLevel.WATCH,
                 symptoms = emptyList(),
                 recommendedActions = listOf(
-                    RecommendedAction("dosimeter", "Dosímetro", "Confirmar lectura con sistema de a bordo."),
-                    RecommendedAction("shielding", "Refugio", "Conocer plan de tormenta solar."),
+                    RecommendedAction("dosimeter", "Dosimeter", "Confirm reading with the onboard system."),
+                    RecommendedAction("shielding", "Shelter", "Know the solar storm plan."),
                 ),
             ),
         )
     }
 
     private fun environmentRules(s: HealthSnapshot): List<ConditionAssessment> {
-        if (s.vitals.spO2Percent >= SpaceHealthThresholds.SPO2_WATCH) return emptyList()
+        // spO2 <= 0 means "not measured" (no sensor): never raise a hypoxia alert from it.
+        if (s.vitals.spO2Percent <= 0 || s.vitals.spO2Percent >= SpaceHealthThresholds.SPO2_WATCH) return emptyList()
         return listOf(
             ConditionAssessment(
                 conditionId = "hypoxia_env",
-                title = "SpO₂ baja",
+                title = "Low SpO₂",
                 category = NasaRiskCategory.CARDIO,
-                summary = "Posible hipoxia leve — revisar presión cabin y equipo.",
+                summary = "Possible mild hypoxia — check cabin pressure and equipment.",
                 confidence = 0.65f,
                 severity = if (s.vitals.spO2Percent < SpaceHealthThresholds.SPO2_CRITICAL) {
                     AlertLevel.CRITICAL
                 } else {
                     AlertLevel.ELEVATED
                 },
-                symptoms = listOf(Symptom("low_spo2", "Saturación baja", SymptomSeverity.MODERATE)),
+                symptoms = listOf(Symptom("low_spo2", "Low saturation", SymptomSeverity.MODERATE)),
                 recommendedActions = listOf(
-                    RecommendedAction("cabin_check", "Cabina", "Verificar O₂ y CO₂ con ingeniería."),
-                    RecommendedAction("medical", "Médico de vuelo", "Evaluación inmediata si <92%."),
+                    RecommendedAction("cabin_check", "Cabin", "Verify O₂ and CO₂ with engineering."),
+                    RecommendedAction("medical", "Flight surgeon", "Immediate evaluation if <92%."),
                 ),
             ),
         )

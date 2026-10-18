@@ -5,6 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,8 +20,17 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import xyz.targapps.rahel.BuildConfig
+import xyz.targapps.rahel.data.remote.DeviceSensorsRequest
 import xyz.targapps.rahel.domain.MissionDynamicVitals
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+
+private const val TAG = "SensorCollector"
+private val VALID_HR_RANGE = 30..230
+
+/** Minimum collection time before the first inventory report, so "delivering" is meaningful. */
+private const val INVENTORY_WARMUP_MS = 120_000L
 
 class SensorCollector(
     context: Context,
@@ -30,6 +40,7 @@ class SensorCollector(
     private val sensorManager = appContext.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val healthBridge = WearHealthServicesBridge(appContext)
     private val derivedCalculator = DerivedMetricsCalculator()
+    private val dailySteps = DailyStepsTracker(appContext)
 
     private val hubScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var healthStreamsJob: Job? = null
@@ -49,23 +60,62 @@ class SensorCollector(
     private var collecting = false
     private val registeredChannels = mutableSetOf<SensorChannelId>()
 
+    /** Wall-clock time of the last event per sensor (SensorInventory.keyOf / hs:* keys); analytics only. */
+    private val lastEventAtByKey = ConcurrentHashMap<String, Long>()
+
+    @Volatile
+    private var collectionStartedAtMs = 0L
+
+    /**
+     * Sensor inventory for the backend, or null while collection has not run for at least
+     * [INVENTORY_WARMUP_MS] (so "delivering" is meaningful).
+     */
+    @Synchronized
+    fun buildInventory(): DeviceSensorsRequest? {
+        val started = collectionStartedAtMs
+        if (!collecting || started == 0L) return null
+        if (System.currentTimeMillis() - started < INVENTORY_WARMUP_MS) return null
+        val inUseKeys = registeredChannels.mapNotNull { channel ->
+            SensorProbe.sensorTypeFor(channel)
+                ?.let { sensorManager.getDefaultSensor(it) }
+                ?.let { SensorInventory.keyOf(it) }
+        }.toSet()
+        return SensorInventory.build(
+            context = appContext,
+            sensorManager = sensorManager,
+            inUseKeys = inUseKeys,
+            lastEventAt = lastEventAtByKey.toMap(),
+            availability = _availability.value,
+            appVersion = BuildConfig.VERSION_NAME,
+        )
+    }
+
     suspend fun refreshAvailability() {
         val base = SensorProbe.probe(appContext)
         val hs = healthBridge.probe()
         _availability.value = base + hs
     }
 
+    /**
+     * Starts collection, or re-tries registering whatever is still missing (e.g. after BODY_SENSORS /
+     * ACTIVITY_RECOGNITION were granted). Safe to call repeatedly.
+     */
+    @Synchronized
     fun startCollection() {
-        if (collecting) return
         collecting = true
+        if (collectionStartedAtMs == 0L) collectionStartedAtMs = System.currentTimeMillis()
         hubScope.launch { refreshAvailability() }
         registerSensorChannels()
-        startHealthServicesStreams()
+        if (healthStreamsJob?.isActive != true) {
+            startHealthServicesStreams()
+        }
     }
 
+    @Synchronized
     fun stopCollection() {
         if (!collecting) return
         collecting = false
+        collectionStartedAtMs = 0L
         healthStreamsJob?.cancel()
         healthStreamsJob = null
         registeredChannels.forEach { channel ->
@@ -91,6 +141,7 @@ class SensorCollector(
             SensorChannelId.HEART_RATE,
         )
         for (channel in channels) {
+            if (channel in registeredChannels) continue
             val type = SensorProbe.sensorTypeFor(channel) ?: continue
             val sensor = sensorManager.getDefaultSensor(type) ?: continue
             val delay = if (channel == SensorChannelId.ACCELEROMETER) {
@@ -98,8 +149,15 @@ class SensorCollector(
             } else {
                 SensorManager.SENSOR_DELAY_NORMAL
             }
-            sensorManager.registerListener(this, sensor, delay)
-            registeredChannels.add(channel)
+            try {
+                if (sensorManager.registerListener(this, sensor, delay)) {
+                    registeredChannels.add(channel)
+                }
+                // false/SecurityException: permission (BODY_SENSORS / ACTIVITY_RECOGNITION) not granted yet;
+                // startCollection() is called again once it is granted.
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Sensor $channel not permitted yet")
+            }
         }
     }
 
@@ -110,20 +168,29 @@ class SensorCollector(
             val avail = _availability.value
             if (avail[SensorChannelId.HEART_RATE_HEALTH_SERVICES]?.state == SensorAvailabilityState.AVAILABLE) {
                 healthBridge.heartRateReadings()
-                    .onEach { emitReading(it); applyHeartRate(it.value.toInt()) }
-                    .catch { }
+                    .onEach {
+                        lastEventAtByKey[SensorInventory.KEY_HS_HEART_RATE] = System.currentTimeMillis()
+                        emitReading(it)
+                        applyHeartRate(it.value.toInt())
+                    }
+                    .catch { Log.w(TAG, "HR stream failed", it) }
                     .launchIn(this)
             }
             if (avail[SensorChannelId.SPO2]?.state == SensorAvailabilityState.AVAILABLE) {
                 healthBridge.spo2Readings()
-                    .onEach { emitReading(it); patchDynamics(derivedCalculator.onSpo2(it.value.toInt())) }
-                    .catch { }
+                    .onEach {
+                        lastEventAtByKey[SensorInventory.KEY_HS_SPO2] = System.currentTimeMillis()
+                        emitReading(it)
+                        patchDynamics(derivedCalculator.onSpo2(it.value.toInt()))
+                    }
+                    .catch { Log.w(TAG, "SpO2 stream failed", it) }
                     .launchIn(this)
             }
         }
     }
 
     override fun onSensorChanged(event: SensorEvent) {
+        lastEventAtByKey[SensorInventory.keyOf(event.sensor)] = System.currentTimeMillis()
         val now = Instant.now()
         when (event.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> {
@@ -205,6 +272,8 @@ class SensorCollector(
             Sensor.TYPE_STEP_COUNTER -> {
                 val total = event.values[0].toLong()
                 derivedCalculator.onStepCounter(total)
+                val today = dailySteps.stepsToday(total)
+                updateDerived { copy(stepsToday = today) }
                 emitReading(SensorReading.StepEvent(timestamp = now, totalSinceBoot = total))
                 patchDynamics(DerivedDynamicsPatch(stepsSession = derivedCalculator.currentStepsSession()))
             }
@@ -230,6 +299,7 @@ class SensorCollector(
 
             Sensor.TYPE_HEART_RATE -> {
                 val bpm = event.values[0].toInt()
+                if (event.accuracy == SensorManager.SENSOR_STATUS_NO_CONTACT) return
                 emitReading(
                     SensorReading.Scalar(
                         channel = SensorChannelId.HEART_RATE,
@@ -246,8 +316,11 @@ class SensorCollector(
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
     private fun applyHeartRate(bpm: Int) {
+        // 0 / out-of-range values mean "no contact" or noise, not a measurement.
+        if (bpm !in VALID_HR_RANGE) return
+        val at = Instant.now()
         patchDynamics(derivedCalculator.onHeartRate(bpm))
-        updateDerived { copy(heartRateBpm = bpm) }
+        updateDerived { copy(heartRateBpm = bpm, heartRateAt = at) }
         val hrv = _dynamics.value.hrvMs
         if (hrv != null) {
             _availability.value = _availability.value + mapOf(

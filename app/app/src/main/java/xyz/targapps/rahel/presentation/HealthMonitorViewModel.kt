@@ -1,5 +1,7 @@
 package xyz.targapps.rahel.presentation
 
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -7,8 +9,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import xyz.targapps.rahel.data.HealthRepository
 import xyz.targapps.rahel.data.HealthSyncRepository
@@ -22,7 +27,6 @@ import xyz.targapps.rahel.domain.ProcessedVitalsSnapshot
 import xyz.targapps.rahel.domain.SensorSample
 import xyz.targapps.rahel.domain.ZScoreEvaluation
 import xyz.targapps.rahel.rules.HealthAssessmentEngine
-import xyz.targapps.rahel.seed.SeedProfile
 import xyz.targapps.rahel.sensor.LiveSensorMetrics
 import xyz.targapps.rahel.sensor.SensorAvailability
 import xyz.targapps.rahel.sensor.SensorHub
@@ -36,7 +40,6 @@ enum class DashboardPage {
 
 enum class MonitorScreen {
     Dashboard,
-    ProfilePicker,
     ConditionDetail,
 }
 
@@ -46,6 +49,16 @@ class HealthMonitorViewModel(
     private val sensorHub: SensorHub,
     private val syncRepository: HealthSyncRepository,
 ) : ViewModel() {
+
+    private companion object {
+        /** Live UI refresh period (nothing is persisted or uploaded at this rate). */
+        const val UI_REFRESH_INTERVAL_MS = 1_000L
+
+        /** Minimum period between samples persisted to the upload queue. */
+        const val RECORD_INTERVAL_MS = 30_000L
+    }
+
+    private var lastRecordedAtMs: Long = -RECORD_INTERVAL_MS
 
     private var latestProcessedVitals: ProcessedVitalsSnapshot? = null
     private var latestMissionDynamics: MissionDynamicVitals? = null
@@ -71,15 +84,13 @@ class HealthMonitorViewModel(
     var selectedConditionId by mutableStateOf<String?>(null)
         private set
 
-    var seedProfile by mutableStateOf(SeedProfile.HEALTHY_CREW)
-        private set
-
     val sensorAvailability: StateFlow<List<SensorAvailability>> = sensorHub.availability
     val liveMetrics: StateFlow<LiveSensorMetrics> = sensorHub.liveMetrics
     val syncStatus: StateFlow<SyncStatus> = syncRepository.syncStatus
 
     init {
-        (sensorHub as? SensorTelemetrySource)?.let { telemetry ->
+        sensorHub.let { hub ->
+            val telemetry = hub as? SensorTelemetrySource ?: return@let
             viewModelScope.launch {
                 telemetry.derivedSnapshot.collect { derived ->
                     val dynamics = derived.dynamics
@@ -91,7 +102,8 @@ class HealthMonitorViewModel(
                             hrvMs = dynamics.hrvMs,
                             spO2Percent = dynamics.spo2Pct,
                             accelZMps2 = dynamics.accelZMps2,
-                            skinTempCelsius = derived.ambientTempCelsius,
+                            // No skin-temperature sensor on the watch: never feed ambient temperature here.
+                            skinTempCelsius = null,
                             motion = dynamics.motion,
                             ecgAnomaly = dynamics.ecgFlag,
                         ),
@@ -99,11 +111,27 @@ class HealthMonitorViewModel(
                 }
             }
         }
-        refresh()
+        viewModelScope.launch {
+            var tick = 0
+            while (isActive) {
+                runTelemetryCycle()
+                if (tick++ % 15 == 0) {
+                    sensorHub.refreshAvailability()
+                }
+                delay(UI_REFRESH_INTERVAL_MS)
+            }
+        }
     }
 
     fun refresh() {
         viewModelScope.launch {
+            runTelemetryCycle()
+            sensorHub.refreshAvailability()
+        }
+    }
+
+    private suspend fun runTelemetryCycle() {
+        try {
             val snap = repository.currentSnapshot.first()
             snapshot = snap
             val full = engine.assessHealth(
@@ -114,9 +142,24 @@ class HealthMonitorViewModel(
             )
             healthAssessment = full
             assessment = full.legacyAssessment
-            repository.recordAssessmentCycle(snap, full)
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastRecordedAtMs >= RECORD_INTERVAL_MS) {
+                // Only advances the timer when a valid sample (real HR, on wrist, paired) was queued.
+                if (repository.recordAssessmentCycle(snap, full)) {
+                    lastRecordedAtMs = now
+                }
+            }
             syncRepository.refreshStatus()
-            sensorHub.refreshAvailability()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("HealthMonitorVM", "Telemetry cycle failed", e)
+            try {
+                syncRepository.refreshStatus()
+            } catch (c: CancellationException) {
+                throw c
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -131,14 +174,6 @@ class HealthMonitorViewModel(
     fun openCondition(conditionId: String) {
         selectedConditionId = conditionId
         screen = MonitorScreen.ConditionDetail
-    }
-
-    fun selectProfile(profile: SeedProfile) {
-        seedProfile = profile
-        engine.resetWellnessState()
-        repository.setSeedProfile(profile)
-        refresh()
-        screen = MonitorScreen.Dashboard
     }
 
     fun triggerSync() {

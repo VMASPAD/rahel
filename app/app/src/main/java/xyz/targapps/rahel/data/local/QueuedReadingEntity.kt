@@ -12,6 +12,8 @@ data class QueuedReadingEntity(
     @ColumnInfo(name = "crew_member_id") val crewMemberId: String,
     @ColumnInfo(name = "payload_json") val payloadJson: String,
     @ColumnInfo(name = "created_at_epoch_ms") val createdAtEpochMs: Long,
+    /** Set once the row is frozen into an upload batch; reused verbatim on every retry. */
+    @ColumnInfo(name = "batch_id") val batchId: String? = null,
 )
 
 object QueueItemKind {

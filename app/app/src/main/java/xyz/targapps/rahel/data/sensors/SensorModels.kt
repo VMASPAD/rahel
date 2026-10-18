@@ -70,6 +70,10 @@ data class DerivedSensorSnapshot(
     val timestamp: Instant = Instant.now(),
     val dynamics: MissionDynamicVitals = MissionDynamicVitals(),
     val heartRateBpm: Int? = null,
+    /** Real timestamp of the last valid HR sample. */
+    val heartRateAt: Instant? = null,
+    /** Steps since local midnight (or since first observation today); null without a step counter. */
+    val stepsToday: Int? = null,
     val barometerHpa: Float? = null,
     val lightLux: Float? = null,
     val ambientTempCelsius: Float? = null,

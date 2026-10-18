@@ -10,4 +10,8 @@ interface HealthApiService {
 
     @POST("telemetry/batch")
     suspend fun postTelemetryBatch(@Body body: TelemetryBatchRequest): TelemetryBatchResponse
+
+    /** Detected sensors + runtime state (analytics). */
+    @POST("device/sensors")
+    suspend fun postDeviceSensors(@Body body: DeviceSensorsRequest): DeviceSensorsResponse
 }

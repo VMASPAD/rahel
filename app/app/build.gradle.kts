@@ -1,3 +1,39 @@
+import java.util.Properties
+
+/** LAN IP of the dev machine (Wi‑Fi). Override in `local.properties` → API_BASE_URL */
+fun resolveDebugApiBaseUrl(): String {
+    val props = Properties()
+    listOf(
+        rootProject.file("local.properties"),
+        rootProject.file("../local.properties"),
+        file("local.properties"),
+    ).firstOrNull { it.exists() }?.inputStream()?.use { props.load(it) }
+    val fromLocal = props.getProperty("API_BASE_URL")?.trim()
+    if (!fromLocal.isNullOrEmpty()) {
+        val url = if (fromLocal.endsWith("/")) fromLocal else "$fromLocal/"
+        return "\"$url\""
+    }
+    return "\"http://192.168.1.24:8080/api/\""
+}
+
+/**
+ * Release signing: reads `app/keystore.properties` (storeFile, storePassword, keyAlias, keyPassword)
+ * or env vars RAHEL_KEYSTORE_FILE / RAHEL_KEYSTORE_PASSWORD / RAHEL_KEY_ALIAS / RAHEL_KEY_PASSWORD.
+ * Returns null when nothing is configured -> release is built UNSIGNED (never fails).
+ */
+fun loadReleaseSigning(): Map<String, String>? {
+    val props = Properties()
+    listOf(rootProject.file("app/keystore.properties"), file("../keystore.properties"), file("keystore.properties"))
+        .firstOrNull { it.exists() }?.inputStream()?.use { props.load(it) }
+    fun v(prop: String, env: String): String? =
+        (props.getProperty(prop) ?: System.getenv(env))?.trim()?.takeIf { it.isNotEmpty() }
+    val file = v("storeFile", "RAHEL_KEYSTORE_FILE") ?: return null
+    val storePw = v("storePassword", "RAHEL_KEYSTORE_PASSWORD") ?: return null
+    val alias = v("keyAlias", "RAHEL_KEY_ALIAS") ?: return null
+    val keyPw = v("keyPassword", "RAHEL_KEY_PASSWORD") ?: storePw
+    return mapOf("storeFile" to file, "storePassword" to storePw, "keyAlias" to alias, "keyPassword" to keyPw)
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -15,21 +51,39 @@ android {
         applicationId = "xyz.targapps.rahel"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 5
+        versionName = "1.0.4"
 
-        // Override in local.properties via API_BASE_URL, or edit debug buildType below.
-        // Emulator → host machine: http://10.0.2.2:8080/
-        buildConfigField("String", "API_BASE_URL", "\"https://api.example.com/\"")
+        // Release URL; debug overrides in buildTypes.debug (see resolveDebugApiBaseUrl).
+        buildConfigField("String", "API_BASE_URL", "\"https://rahel.hermesbackend.xyz/api/\"")
+    }
+
+    val releaseSigning = loadReleaseSigning()
+    signingConfigs {
+        if (releaseSigning != null) {
+            create("release") {
+                storeFile = file(releaseSigning.getValue("storeFile"))
+                storePassword = releaseSigning.getValue("storePassword")
+                keyAlias = releaseSigning.getValue("keyAlias")
+                keyPassword = releaseSigning.getValue("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         debug {
-            // Local dev API (see data/remote/RemoteApiFactory.kt).
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/\"")
+            // Host on LAN (wlp8s0). Paths: pairing/code, profile, … under /api/
+            buildConfigField("String", "API_BASE_URL", resolveDebugApiBaseUrl())
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.findByName("release")
+            buildConfigField(
+                "String",
+                "API_BASE_URL",
+                "\"https://rahel.hermesbackend.xyz/api/\"",
+            )
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

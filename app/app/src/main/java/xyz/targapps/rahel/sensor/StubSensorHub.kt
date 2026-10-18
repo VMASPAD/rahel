@@ -34,9 +34,9 @@ class StubSensorHub : SensorHub {
     private fun HealthSnapshot.toLiveMetrics(): LiveSensorMetrics {
         val v = vitals
         val motion = when {
-            v.stepsToday > 8000 -> "Alta"
-            v.stepsToday > 3000 -> "Moderada"
-            else -> "Baja"
+            v.stepsToday > 8000 -> "High"
+            v.stepsToday > 3000 -> "Moderate"
+            else -> "Low"
         }
         return LiveSensorMetrics(
             heartRateBpm = v.heartRateBpm,
@@ -51,11 +51,11 @@ class StubSensorHub : SensorHub {
 
     companion object {
         fun defaultAvailability(): List<SensorAvailability> = listOf(
-            SensorAvailability(SensorKind.HEART_RATE, true, "FC"),
+            SensorAvailability(SensorKind.HEART_RATE, true, "HR"),
             SensorAvailability(SensorKind.SPO2, true, "SpO₂"),
-            SensorAvailability(SensorKind.MOTION, true, "Movimiento"),
-            SensorAvailability(SensorKind.STEPS, true, "Pasos"),
-            SensorAvailability(SensorKind.BAROMETER, false, "Barómetro"),
+            SensorAvailability(SensorKind.MOTION, true, "Motion"),
+            SensorAvailability(SensorKind.STEPS, true, "Steps"),
+            SensorAvailability(SensorKind.BAROMETER, false, "Barometer"),
         )
     }
 }

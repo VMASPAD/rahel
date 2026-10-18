@@ -26,6 +26,9 @@ import xyz.targapps.rahel.R
 import xyz.targapps.rahel.domain.AlertLevel
 import xyz.targapps.rahel.domain.ConditionAssessment
 import xyz.targapps.rahel.domain.ZScoreEvaluation
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import xyz.targapps.rahel.presentation.components.BackChip
 import xyz.targapps.rahel.presentation.components.DashboardPageDots
 import xyz.targapps.rahel.presentation.components.ListNavChip
@@ -40,8 +43,8 @@ import xyz.targapps.rahel.presentation.components.WearScreenFrame
 import xyz.targapps.rahel.presentation.components.WearScrollScreen
 import xyz.targapps.rahel.presentation.components.ZScoreRow
 import xyz.targapps.rahel.presentation.theme.RaHelTheme
-import xyz.targapps.rahel.seed.SeedData
-import xyz.targapps.rahel.seed.SeedProfile
+import xyz.targapps.rahel.presentation.pairing.LinkCodesBlock
+import xyz.targapps.rahel.presentation.pairing.PairingViewModel
 import xyz.targapps.rahel.sensor.LiveSensorMetrics
 
 private val syncTimeFormatter =
@@ -58,12 +61,16 @@ private fun formatZMeasured(z: ZScoreEvaluation): String =
     }
 
 @Composable
-fun HealthMonitorApp(viewModel: HealthMonitorViewModel) {
+fun HealthMonitorApp(
+    viewModel: HealthMonitorViewModel,
+    pairingViewModel: PairingViewModel,
+    monitoringEnabled: Boolean,
+    onSetMonitoring: (Boolean) -> Unit,
+) {
     RaHelTheme {
         WearScreenFrame {
             when (viewModel.screen) {
-                MonitorScreen.Dashboard -> DashboardHost(viewModel)
-                MonitorScreen.ProfilePicker -> ProfilePickerScreen(viewModel)
+                MonitorScreen.Dashboard -> DashboardHost(viewModel, pairingViewModel, monitoringEnabled, onSetMonitoring)
                 MonitorScreen.ConditionDetail -> ConditionDetailScreen(viewModel)
             }
         }
@@ -71,7 +78,12 @@ fun HealthMonitorApp(viewModel: HealthMonitorViewModel) {
 }
 
 @Composable
-private fun DashboardHost(vm: HealthMonitorViewModel) {
+private fun DashboardHost(
+    vm: HealthMonitorViewModel,
+    pairingViewModel: PairingViewModel,
+    monitoringEnabled: Boolean,
+    onSetMonitoring: (Boolean) -> Unit,
+) {
     val pageCount = DashboardPage.entries.size
     val pagerState = rememberPagerState(
         initialPage = vm.dashboardPage,
@@ -90,10 +102,10 @@ private fun DashboardHost(vm: HealthMonitorViewModel) {
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             when (DashboardPage.entries[page]) {
-                DashboardPage.Overview -> OverviewPage(vm)
+                DashboardPage.Overview -> OverviewPage(vm, monitoringEnabled, onSetMonitoring)
                 DashboardPage.Sensors -> SensorsPage(vm)
                 DashboardPage.Alerts -> AlertsPage(vm)
-                DashboardPage.Sync -> SyncPage(vm)
+                DashboardPage.Sync -> SyncPage(vm, pairingViewModel)
             }
         }
         DashboardPageDots(
@@ -107,7 +119,11 @@ private fun DashboardHost(vm: HealthMonitorViewModel) {
 }
 
 @Composable
-private fun OverviewPage(vm: HealthMonitorViewModel) {
+private fun OverviewPage(
+    vm: HealthMonitorViewModel,
+    monitoringEnabled: Boolean,
+    onSetMonitoring: (Boolean) -> Unit,
+) {
     val result = vm.assessment
     val level = result?.overallLevel ?: AlertLevel.NOMINAL
     val snap = vm.snapshot
@@ -139,6 +155,29 @@ private fun OverviewPage(vm: HealthMonitorViewModel) {
                 style = MaterialTheme.typography.caption2,
                 color = MaterialTheme.colors.onSurfaceVariant,
                 textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            )
+        }
+        item {
+            Text(
+                text = stringResource(
+                    if (monitoringEnabled) R.string.monitoring_status_on else R.string.monitoring_status_off,
+                ),
+                style = MaterialTheme.typography.caption2,
+                color = MaterialTheme.colors.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item {
+            NavCompactChip(
+                label = stringResource(
+                    if (monitoringEnabled) R.string.monitoring_stop else R.string.monitoring_start,
+                ),
+                icon = if (monitoringEnabled) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                onClick = { onSetMonitoring(!monitoringEnabled) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
@@ -185,14 +224,6 @@ private fun OverviewPage(vm: HealthMonitorViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp, bottom = 4.dp),
-            )
-        }
-        item {
-            NavCompactChip(
-                label = stringResource(R.string.nav_seed),
-                icon = RaHelIcons.Seed,
-                onClick = { vm.navigate(MonitorScreen.ProfilePicker) },
-                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
@@ -314,7 +345,7 @@ private fun AlertsPage(vm: HealthMonitorViewModel) {
 }
 
 @Composable
-private fun SyncPage(vm: HealthMonitorViewModel) {
+private fun SyncPage(vm: HealthMonitorViewModel, pairingViewModel: PairingViewModel) {
     val sync by vm.syncStatus.collectAsState()
 
     WearScrollScreen(horizontalAlignment = Alignment.Start) {
@@ -360,6 +391,9 @@ private fun SyncPage(vm: HealthMonitorViewModel) {
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
+        }
+        item {
+            LinkCodesBlock(viewModel = pairingViewModel, compact = true)
         }
     }
 }
@@ -418,28 +452,3 @@ private fun ConditionDetailScreen(vm: HealthMonitorViewModel) {
     }
 }
 
-@Composable
-private fun ProfilePickerScreen(vm: HealthMonitorViewModel) {
-    WearScrollScreen(horizontalAlignment = Alignment.Start) {
-        item { ScreenHeader(title = stringResource(R.string.screen_seed)) }
-        items(SeedData.allProfiles) { profile ->
-            ProfileRow(
-                profile = profile,
-                selected = profile == vm.seedProfile,
-                onSelect = { vm.selectProfile(profile) },
-            )
-        }
-        item { BackChip(onClick = { vm.navigate(MonitorScreen.Dashboard) }) }
-    }
-}
-
-@Composable
-private fun ProfileRow(profile: SeedProfile, selected: Boolean, onSelect: () -> Unit) {
-    ListNavChip(
-        title = profile.displayName,
-        subtitle = profile.description,
-        onClick = onSelect,
-        selected = selected,
-        modifier = Modifier.padding(vertical = 2.dp),
-    )
-}

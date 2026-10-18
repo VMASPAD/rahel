@@ -54,9 +54,9 @@ object MissionWellnessRules {
             HealthEventAlert(
                 eventId = SpaceCardioEventId.HYDRATION_REMINDER,
                 level = AlertLevel.WATCH,
-                title = "Hidratación",
-                message = "Recordatorio: registra tu ingesta de agua.",
-                suggestedAction = "Beber según el plan de hidratación de la misión y registrar la cantidad consumida.",
+                title = "Hydration",
+                message = "Reminder: log your water intake.",
+                suggestedAction = "Drink according to the mission hydration plan and log the amount consumed.",
                 triggerHaptic = true,
             ),
         )
@@ -72,9 +72,9 @@ object MissionWellnessRules {
             HealthEventAlert(
                 eventId = SpaceCardioEventId.CALCIUM_REMINDER,
                 level = AlertLevel.WATCH,
-                title = "Calcio",
-                message = "Recordatorio: revisa tu ingesta de calcio.",
-                suggestedAction = "Revisar el registro nutricional y alimentos ricos en calcio según el plan de misión.",
+                title = "Calcium",
+                message = "Reminder: check your calcium intake.",
+                suggestedAction = "Review the nutrition log and calcium-rich foods per the mission plan.",
                 triggerHaptic = true,
             ),
         )
@@ -89,9 +89,9 @@ object MissionWellnessRules {
             HealthEventAlert(
                 eventId = SpaceCardioEventId.INACTIVITY_REMINDER,
                 level = AlertLevel.WATCH,
-                title = "Pausa activa",
-                message = "Realiza una pausa activa de 5 minutos.",
-                suggestedAction = "Caminar o estirar unos minutos si las condiciones de seguridad lo permiten.",
+                title = "Active break",
+                message = "Take a 5-minute active break.",
+                suggestedAction = "Walk or stretch for a few minutes if safety conditions allow.",
                 triggerHaptic = true,
             ),
         )
@@ -108,9 +108,9 @@ object MissionWellnessRules {
             HealthEventAlert(
                 eventId = SpaceCardioEventId.REST_LIGHT_DISRUPTION,
                 level = AlertLevel.WATCH,
-                title = "Descanso",
-                message = "Luz elevada durante el periodo de descanso.",
-                suggestedAction = "Reducir la iluminación de la cabina y seguir la rutina de descanso establecida.",
+                title = "Rest",
+                message = "Bright light during the rest period.",
+                suggestedAction = "Dim the cabin lighting and follow the established rest routine.",
                 triggerHaptic = true,
             ),
         )

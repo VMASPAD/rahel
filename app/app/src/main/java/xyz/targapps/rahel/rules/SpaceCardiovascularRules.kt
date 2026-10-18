@@ -38,10 +38,10 @@ object SpaceCardiovascularRules {
             HealthEventAlert(
                 eventId = SpaceCardioEventId.POSSIBLE_AFIB,
                 level = AlertLevel.WATCH,
-                title = "Posible fibrilación auricular",
-                message = "Posible Fibrilación Auricular detectada en reposo.",
+                title = "Possible atrial fibrillation",
+                message = "Possible atrial fibrillation detected at rest.",
                 suggestedAction =
-                    "Reposo reclinado 30–45°, evitar Valsalva no supervisada, ECG manual 60 s al médico de vuelo.",
+                    "Rest reclined at 30–45°, avoid unsupervised Valsalva, send a manual 60 s ECG to the flight surgeon.",
             ),
         )
     }
@@ -59,10 +59,10 @@ object SpaceCardiovascularRules {
             HealthEventAlert(
                 eventId = SpaceCardioEventId.RADIATION_HRV_RESPONSE,
                 level = AlertLevel.ELEVATED,
-                title = "HRV y radiación solar",
-                message = "Caída de HRV consistente con evento de radiación solar.",
+                title = "HRV and solar radiation",
+                message = "HRV drop consistent with a solar radiation event.",
                 suggestedAction =
-                    "Verificar blindaje del módulo, suspender EVA no esenciales, registrar hidratación con oficial médico.",
+                    "Check module shielding, suspend non-essential EVAs, log hydration with the medical officer.",
             ),
         )
     }
@@ -83,10 +83,10 @@ object SpaceCardiovascularRules {
             HealthEventAlert(
                 eventId = SpaceCardioEventId.ORTHOSTATIC_SYNCOPE_RISK,
                 level = AlertLevel.ELEVATED,
-                title = "Riesgo ortostático",
-                message = "Riesgo de desmayo ortostático. Afiérrese a los pasamanos.",
+                title = "Orthostatic risk",
+                message = "Risk of orthostatic fainting. Hold on to the handrails.",
                 suggestedAction =
-                    "Sujetarse a fijaciones, contracciones isométricas en piernas, ajustar prendas compresivas.",
+                    "Hold on to restraints, do isometric leg contractions, adjust compression garments.",
                 triggerHaptic = true,
             ),
         )
@@ -109,10 +109,10 @@ object SpaceCardiovascularRules {
             HealthEventAlert(
                 eventId = SpaceCardioEventId.CIRCADIAN_STRESS,
                 level = AlertLevel.WATCH,
-                title = "Estrés circadiano",
-                message = "Patrón de sueño fragmentado y estrés térmico.",
+                title = "Circadian stress",
+                message = "Fragmented sleep pattern and thermal stress.",
                 suggestedAction =
-                    "Relajación/respiración guiada 10 min, ajustar luz de cabina a espectro rojo.",
+                    "10 min guided relaxation/breathing, switch cabin lighting to red spectrum.",
             ),
         )
     }
@@ -132,10 +132,10 @@ object SpaceCardiovascularRules {
             HealthEventAlert(
                 eventId = SpaceCardioEventId.CO2_RESPIRATORY_STRESS,
                 level = AlertLevel.ELEVATED,
-                title = "Estrés respiratorio por CO₂",
-                message = "Acumulación de CO₂ en su zona.",
+                title = "CO₂ respiratory stress",
+                message = "CO₂ buildup in your area.",
                 suggestedAction =
-                    "Cambiar de módulo, activar ventilación forzada, medir SpO₂ en 5 minutos.",
+                    "Move to another module, turn on forced ventilation, re-measure SpO₂ in 5 minutes.",
                 triggerHaptic = true,
             ),
         )

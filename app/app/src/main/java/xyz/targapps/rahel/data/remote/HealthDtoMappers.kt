@@ -10,22 +10,29 @@ import xyz.targapps.rahel.domain.HealthSnapshot
 import xyz.targapps.rahel.domain.RecommendedAction
 import xyz.targapps.rahel.domain.Symptom
 
-fun HealthSnapshot.toSensorReadingDto(): SensorReadingDto = SensorReadingDto(
-    recordedAtEpochMs = timestamp.toEpochMilli(),
-    heartRateBpm = vitals.heartRateBpm,
-    restingHeartRateBpm = vitals.restingHeartRateBpm,
-    hrvMs = vitals.hrvMs,
-    spO2Percent = vitals.spO2Percent,
-    stepsToday = vitals.stepsToday,
-    sleepHoursLastNight = vitals.sleepHoursLastNight,
-    skinTempCelsius = vitals.skinTempCelsius,
-    stressScore = vitals.stressScore,
+/**
+ * Maps to the upload DTO using the real sample timestamp and nullable vitals.
+ * Sleep and stress are not measured by the watch, so they are always null.
+ */
+fun HealthSnapshot.toSensorReadingDto(): SensorReadingDto {
+    val sv = sensorVitals
+    return SensorReadingDto(
+    recordedAtEpochMs = sv?.sampleAtEpochMs ?: timestamp.toEpochMilli(),
+    heartRateBpm = if (sv != null) sv.heartRateBpm else vitals.heartRateBpm.takeIf { it > 0 },
+    restingHeartRateBpm = if (sv != null) sv.restingHeartRateBpm else vitals.restingHeartRateBpm.takeIf { it > 0 },
+    hrvMs = if (sv != null) sv.hrvMs else vitals.hrvMs.takeIf { it > 0 },
+    spO2Percent = if (sv != null) sv.spO2Percent else vitals.spO2Percent.takeIf { it > 0 },
+    stepsToday = if (sv != null) sv.stepsToday else null,
+    sleepHoursLastNight = null,
+    skinTempCelsius = if (sv != null) sv.skinTempCelsius else null,
+    stressScore = null,
     missionDay = mission.missionDay,
     microgravity = mission.microgravity,
     isolationIndex = mission.isolationIndex,
     radiationDoseMilliSvProxy = mission.radiationDoseMilliSvProxy,
     selfReportedSymptoms = selfReportedSymptoms.map { it.toDto() },
-)
+    )
+}
 
 /** Maps queued [HealthAssessment.toApiPayload] JSON to the batch API DTO. */
 fun healthAssessmentDtoFromApiPayload(payloadJson: String, gson: Gson): HealthAssessmentDto {
@@ -48,7 +55,7 @@ fun healthAssessmentDtoFromApiPayload(payloadJson: String, gson: Gson): HealthAs
         assessedAtEpochMs = assessedAtEpochMs,
         overallLevel = root.get("overallLevel").asString,
         headline = root.get("headline").asString,
-        disclaimer = "Prototipo educativo — no es diagnóstico médico. Consulte al médico de vuelo.",
+        disclaimer = "Educational prototype — not a medical diagnosis. Consult your flight surgeon.",
         conditions = conditions,
     )
 }

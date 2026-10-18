@@ -86,12 +86,30 @@ data class Symptom(
     val severity: SymptomSeverity,
 )
 
+/**
+ * Measured values as the sensors reported them; `null` means "not measured" (never 0).
+ * Used for telemetry upload. [VitalSigns] keeps non-null ints only for on-device rules/UI.
+ */
+data class SensorVitals(
+    val heartRateBpm: Int? = null,
+    val restingHeartRateBpm: Int? = null,
+    val hrvMs: Int? = null,
+    val spO2Percent: Int? = null,
+    val stepsToday: Int? = null,
+    val skinTempCelsius: Float? = null,
+    /** true = on wrist, false = off wrist, null = unknown (no off-body sensor). */
+    val onWrist: Boolean? = null,
+    /** Real timestamp of the heart-rate sample (epoch ms); null when no HR sample yet. */
+    val sampleAtEpochMs: Long? = null,
+)
+
 data class HealthSnapshot(
     val timestamp: Instant,
     val crewMemberId: String,
     val vitals: VitalSigns,
     val mission: MissionContext,
     val selfReportedSymptoms: List<Symptom> = emptyList(),
+    val sensorVitals: SensorVitals? = null,
 )
 
 data class RecommendedAction(
@@ -116,7 +134,7 @@ data class AssessmentResult(
     val headline: String,
     val conditions: List<ConditionAssessment>,
     val disclaimer: String =
-        "Prototipo educativo — no es diagnóstico médico. Consulte al médico de vuelo.",
+        "Educational prototype — not a medical diagnosis. Consult your flight surgeon.",
 )
 
 /** Z-score band per datos.md §3 (|Z| thresholds). */

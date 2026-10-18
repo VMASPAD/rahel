@@ -14,28 +14,28 @@ enum class SeedProfile(
 ) {
     HEALTHY_CREW(
         id = "healthy_crew",
-        displayName = "Tripulación nominal",
-        description = "Vitals dentro de rangos esperados en órbita estable.",
+        displayName = "Nominal crew",
+        description = "Vitals within expected ranges in stable orbit.",
     ),
     EARLY_BONE_DEMINERALIZATION(
         id = "early_bone_demineralization",
-        displayName = "Pérdida ósea temprana",
-        description = "Baja carga mecánica y actividad — proxy de desmineralización.",
+        displayName = "Early bone loss",
+        description = "Low mechanical load and activity — demineralization proxy.",
     ),
     SLEEP_DEPRIVATION_STRESS(
         id = "sleep_deprivation_stress",
-        displayName = "Sueño / estrés",
-        description = "Privación de sueño e HRV baja — salud conductual.",
+        displayName = "Sleep / stress",
+        description = "Sleep deprivation and low HRV — behavioral health.",
     ),
     CARDIOVASCULAR_STRAIN(
         id = "cardiovascular_strain",
-        displayName = "Estrés cardiovascular",
-        description = "FC elevada y desacondicionamiento en microgravedad.",
+        displayName = "Cardiovascular strain",
+        description = "Elevated HR and deconditioning in microgravity.",
     ),
     IMMUNE_SUPPRESSION_PROXY(
         id = "immune_suppression_proxy",
-        displayName = "Inmunidad (proxy)",
-        description = "Fatiga, estrés y sueño pobre — riesgo inmune relativo.",
+        displayName = "Immunity (proxy)",
+        description = "Fatigue, stress, and poor sleep — relative immune risk.",
     ),
 }
 
@@ -87,7 +87,7 @@ object SeedData {
                     inactivityMinutes = 75,
                 ),
                 selfReportedSymptoms = listOf(
-                    Symptom("bone_ache", "Molestia muscular / huesos", SymptomSeverity.MILD),
+                    Symptom("bone_ache", "Muscle / bone discomfort", SymptomSeverity.MILD),
                 ),
             )
 
@@ -113,8 +113,8 @@ object SeedData {
                     ambientLightLux = 280f,
                 ),
                 selfReportedSymptoms = listOf(
-                    Symptom("irritability", "Irritabilidad", SymptomSeverity.MODERATE),
-                    Symptom("anxiety", "Ansiedad", SymptomSeverity.MILD),
+                    Symptom("irritability", "Irritability", SymptomSeverity.MODERATE),
+                    Symptom("anxiety", "Anxiety", SymptomSeverity.MILD),
                 ),
             )
 
@@ -139,7 +139,7 @@ object SeedData {
                     solarRadiationFluxPfu = 12.0,
                 ),
                 selfReportedSymptoms = listOf(
-                    Symptom("palpitations", "Palpitaciones leves", SymptomSeverity.MILD),
+                    Symptom("palpitations", "Mild palpitations", SymptomSeverity.MILD),
                 ),
             )
 
@@ -163,7 +163,7 @@ object SeedData {
                     solarRadiationFluxPfu = 15.0,
                 ),
                 selfReportedSymptoms = listOf(
-                    Symptom("fatigue", "Fatiga persistente", SymptomSeverity.MODERATE),
+                    Symptom("fatigue", "Persistent fatigue", SymptomSeverity.MODERATE),
                 ),
             )
         }

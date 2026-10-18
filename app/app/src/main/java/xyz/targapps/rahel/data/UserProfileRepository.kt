@@ -40,6 +40,9 @@ class UserProfileRepository(private val context: Context) {
         val pesoKg = floatPreferencesKey(PESO_KG)
         val alturaM = floatPreferencesKey(ALTURA_M)
         val imc = floatPreferencesKey(IMC)
+
+        /** User-controlled: vitals monitoring (and its foreground service) runs only while this is true. */
+        val monitoringEnabled = booleanPreferencesKey("monitoring_enabled")
     }
 
     val userProfile: Flow<UserProfile> = context.userProfileDataStore.data.map { prefs ->
@@ -50,6 +53,15 @@ class UserProfileRepository(private val context: Context) {
             imc = prefs[Keys.imc],
             onboardingComplete = prefs[Keys.onboardingComplete] ?: false,
         )
+    }
+
+    /** Whether the user has turned vitals monitoring on. Off by default. */
+    val monitoringEnabled: Flow<Boolean> = context.userProfileDataStore.data.map { prefs ->
+        prefs[Keys.monitoringEnabled] ?: false
+    }
+
+    suspend fun setMonitoringEnabled(enabled: Boolean) {
+        context.userProfileDataStore.edit { prefs -> prefs[Keys.monitoringEnabled] = enabled }
     }
 
     suspend fun saveOnboardingProfile(
