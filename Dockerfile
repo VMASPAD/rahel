@@ -28,7 +28,9 @@ WORKDIR /repo/frontend
 RUN npm ci
 COPY --from=source /src/frontend/ ./
 ARG VITE_API_URL=
+ARG VITE_SITE_URL=https://rahel.hermesbackend.xyz
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SITE_URL=$VITE_SITE_URL
 RUN npm run build
 
 FROM node:20-bookworm-slim AS runtime
@@ -40,15 +42,22 @@ ENV PORT=80
 ENV RAHEL_DB_PATH=/data/rahel.db
 ENV STATIC_WEB_ROOT=/app/public
 
-COPY --from=backend-build /repo/backend/package.json ./
-COPY --from=backend-build /repo/backend/node_modules ./node_modules
-COPY --from=backend-build /repo/backend/dist ./dist
-COPY --from=backend-build /repo/backend/data ./data
-COPY --from=frontend-build /repo/frontend/dist ./public
+COPY --from=backend-build --chown=node:node /repo/backend/package.json ./
+COPY --from=backend-build --chown=node:node /repo/backend/node_modules ./node_modules
+COPY --from=backend-build --chown=node:node /repo/backend/dist ./dist
+COPY --from=backend-build --chown=node:node /repo/backend/data ./data
+COPY --from=frontend-build --chown=node:node /repo/frontend/dist ./public
 
-RUN mkdir -p /data
+RUN mkdir -p /data && chown node:node /data
+
+# Usuario no root. El puerto 80 funciona sin root en Docker >= 20.10
+# (net.ipv4.ip_unprivileged_port_start=0); si no, usa PORT=8080 y ajusta el puerto en Coolify.
+USER node
 
 EXPOSE 80
 VOLUME ["/data"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||80)+'/api/health').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "dist/index.js"]

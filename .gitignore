@@ -23,3 +23,8 @@ backend/dist/
 app/local.properties
 app/.gradle/
 app/**/build/
+
+# Signing secrets
+keystore.properties
+*.jks
+*.keystore
