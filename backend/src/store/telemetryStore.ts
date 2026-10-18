@@ -1,4 +1,7 @@
 import { getDb } from "../db/database.js";
+import { MAX_WINDOW_ROWS } from "../estimation/constants.js";
+import { enrichReadings } from "../estimation/index.js";
+import { recordIngest } from "./ingestLogStore.js";
 import type {
   CrewLatestDto,
   CrewSummaryDto,
@@ -17,52 +20,84 @@ export function upsertProfile(body: UserProfileSnapshotDto): void {
     .run(body.crewMemberId, JSON.stringify(body));
 }
 
-export function ingestBatch(body: TelemetryBatchRequest): {
+export type IngestMeta = {
+  deviceId?: string | null;
+  bytes?: number | null;
+  appVersion?: string | null;
+};
+
+export function ingestBatch(
+  body: TelemetryBatchRequest,
+  meta: IngestMeta = {},
+): {
   acceptedReadings: number;
   acceptedAssessments: number;
 } {
-  const insertBatch = getDb().prepare(
+  const db = getDb();
+  const insertBatch = db.prepare(
     `INSERT OR IGNORE INTO processed_batches (crew_member_id, client_batch_id) VALUES (?, ?)`,
   );
-  const result = insertBatch.run(body.crewMemberId, body.clientBatchId);
-  if (result.changes === 0) {
-    return { acceptedReadings: 0, acceptedAssessments: 0 };
-  }
-
-  const insertReading = getDb().prepare(
-    `INSERT INTO sensor_readings (crew_member_id, recorded_at_epoch_ms, data_json)
+  const insertReading = db.prepare(
+    `INSERT OR IGNORE INTO sensor_readings (crew_member_id, recorded_at_epoch_ms, data_json)
      VALUES (?, ?, ?)`,
   );
-  const insertAssessment = getDb().prepare(
-    `INSERT INTO health_assessments (crew_member_id, assessed_at_epoch_ms, data_json)
+  const insertAssessment = db.prepare(
+    `INSERT OR IGNORE INTO health_assessments (crew_member_id, assessed_at_epoch_ms, data_json)
      VALUES (?, ?, ?)`,
   );
 
-  const tx = getDb().transaction(() => {
+  // Batch marker and data share one transaction: a failure leaves the batch retryable.
+  const logBase = {
+    deviceId: meta.deviceId,
+    crewMemberId: body.crewMemberId,
+    batchId: body.clientBatchId,
+    readingsReceived: body.readings.length,
+    assessmentsReceived: body.assessments.length,
+    bytes: meta.bytes,
+    appVersion: meta.appVersion ?? body.appVersion ?? null,
+  };
+
+  return db.transaction(() => {
+    if (insertBatch.run(body.crewMemberId, body.clientBatchId).changes === 0) {
+      recordIngest({
+        ...logBase,
+        readingsAccepted: 0,
+        status: "ok",
+        errorCode: "duplicate_batch",
+      });
+      return { acceptedReadings: 0, acceptedAssessments: 0 };
+    }
+    let acceptedReadings = 0;
+    let acceptedAssessments = 0;
     for (const r of body.readings) {
-      insertReading.run(body.crewMemberId, r.recordedAtEpochMs, JSON.stringify(r));
+      acceptedReadings += insertReading.run(
+        body.crewMemberId,
+        r.recordedAtEpochMs,
+        JSON.stringify(r),
+      ).changes;
     }
     for (const a of body.assessments) {
-      insertAssessment.run(body.crewMemberId, a.assessedAtEpochMs, JSON.stringify(a));
+      acceptedAssessments += insertAssessment.run(
+        body.crewMemberId,
+        a.assessedAtEpochMs,
+        JSON.stringify(a),
+      ).changes;
     }
-  });
-  tx();
-
-  return {
-    acceptedReadings: body.readings.length,
-    acceptedAssessments: body.assessments.length,
-  };
+    recordIngest({ ...logBase, readingsAccepted: acceptedReadings, status: "ok" });
+    return { acceptedReadings, acceptedAssessments };
+  })();
 }
 
-function allCrewIds(): string[] {
-  const rows = getDb()
-    .prepare(
-      `SELECT crew_member_id FROM profiles
-       UNION SELECT crew_member_id FROM sensor_readings
-       UNION SELECT crew_member_id FROM health_assessments`,
-    )
-    .all() as { crew_member_id: string }[];
-  return rows.map((r) => r.crew_member_id);
+/** True when the crew member belongs to the user (non-revoked device). */
+export function userOwnsCrew(userId: string, crewMemberId: string): boolean {
+  return Boolean(
+    getDb()
+      .prepare(
+        `SELECT 1 FROM devices
+         WHERE user_id = ? AND crew_member_id = ? AND revoked_at_epoch_ms IS NULL`,
+      )
+      .get(userId, crewMemberId),
+  );
 }
 
 function getProfile(crewMemberId: string): UserProfileSnapshotDto | null {
@@ -92,26 +127,67 @@ export function latestAssessmentFor(crewMemberId: string): HealthAssessmentDto |
   return row ? (JSON.parse(row.data_json) as HealthAssessmentDto) : null;
 }
 
-export function listCrew(): CrewSummaryDto[] {
-  return allCrewIds().map((crewMemberId) => {
-    const profile = getProfile(crewMemberId);
-    const latestReading = latestReadingFor(crewMemberId);
-    const latestAssessment = latestAssessmentFor(crewMemberId);
-    return {
-      crewMemberId,
-      profileUpdatedAtEpochMs: profile?.snapshotAtEpochMs ?? null,
-      latestReadingAtEpochMs: latestReading?.recordedAtEpochMs ?? null,
-      overallLevel: latestAssessment?.overallLevel ?? null,
-      headline: latestAssessment?.headline ?? null,
-    };
-  });
+/** Single aggregated query (no N+1), scoped to the user's devices. */
+export function listCrew(userId: string): CrewSummaryDto[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT d.crew_member_id AS crew_member_id,
+        (SELECT data_json FROM profiles p WHERE p.crew_member_id = d.crew_member_id) AS profile_json,
+        (SELECT data_json FROM sensor_readings r WHERE r.crew_member_id = d.crew_member_id
+           ORDER BY r.recorded_at_epoch_ms DESC LIMIT 1) AS reading_json,
+        (SELECT data_json FROM health_assessments a WHERE a.crew_member_id = d.crew_member_id
+           ORDER BY a.assessed_at_epoch_ms DESC LIMIT 1) AS assessment_json
+       FROM devices d
+       WHERE d.user_id = ? AND d.revoked_at_epoch_ms IS NULL`,
+    )
+    .all(userId) as {
+    crew_member_id: string;
+    profile_json: string | null;
+    reading_json: string | null;
+    assessment_json: string | null;
+  }[];
+  return rows
+    .map((row) => {
+      const profile = row.profile_json
+        ? (JSON.parse(row.profile_json) as UserProfileSnapshotDto)
+        : null;
+      const reading = row.reading_json
+        ? (JSON.parse(row.reading_json) as SensorReadingDto)
+        : null;
+      const assessment = row.assessment_json
+        ? (JSON.parse(row.assessment_json) as HealthAssessmentDto)
+        : null;
+      return {
+        crewMemberId: row.crew_member_id,
+        profileUpdatedAtEpochMs: profile?.snapshotAtEpochMs ?? null,
+        latestReadingAtEpochMs: reading?.recordedAtEpochMs ?? null,
+        overallLevel: assessment?.overallLevel ?? null,
+        headline: assessment?.headline ?? null,
+      };
+    })
+    .sort((a, b) => (b.latestReadingAtEpochMs ?? 0) - (a.latestReadingAtEpochMs ?? 0));
 }
 
-export function getCrewLatest(crewMemberId: string): CrewLatestDto | null {
+/**
+ * One query: newest MAX_WINDOW_ROWS raw readings, returned ascending.
+ * Raw data stays untouched in the DB; estimation happens only on the copies.
+ */
+export function readingWindowAsc(crewMemberId: string): SensorReadingDto[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT data_json FROM sensor_readings
+       WHERE crew_member_id = ? ORDER BY recorded_at_epoch_ms DESC LIMIT ?`,
+    )
+    .all(crewMemberId, MAX_WINDOW_ROWS) as { data_json: string }[];
+  return rows.map((r) => JSON.parse(r.data_json) as SensorReadingDto).reverse();
+}
+
+export function getCrewLatest(crewMemberId: string): CrewLatestDto {
   const profile = getProfile(crewMemberId);
-  const latestReading = latestReadingFor(crewMemberId);
+  const window = readingWindowAsc(crewMemberId);
+  const last = window[window.length - 1];
+  const latestReading = last ? enrichReadings(window, [last])[0] : null;
   const latestAssessment = latestAssessmentFor(crewMemberId);
-  if (!profile && !latestReading && !latestAssessment) return null;
   return {
     crewMemberId,
     profile,
@@ -120,14 +196,12 @@ export function getCrewLatest(crewMemberId: string): CrewLatestDto | null {
   };
 }
 
-export function getReadings(crewMemberId: string, limit: number): SensorReadingDto[] {
-  const rows = getDb()
-    .prepare(
-      `SELECT data_json FROM sensor_readings
-       WHERE crew_member_id = ? ORDER BY recorded_at_epoch_ms DESC LIMIT ?`,
-    )
-    .all(crewMemberId, limit) as { data_json: string }[];
-  return rows.map((r) => JSON.parse(r.data_json) as SensorReadingDto);
+/** Newest-first, enriched with read-time estimates (see estimation/index.ts). */
+export function getReadings(crewMemberId: string, rawLimit: number): SensorReadingDto[] {
+  const limit = Math.max(1, Math.min(Math.floor(rawLimit) || 100, 500));
+  const window = readingWindowAsc(crewMemberId);
+  const targets = window.slice(-limit);
+  return enrichReadings(window, targets).reverse();
 }
 
 export function loadSeed(data: {

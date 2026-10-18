@@ -17,19 +17,32 @@ export type SymptomDto = {
 
 export type SensorReadingDto = {
   recordedAtEpochMs: number;
-  heartRateBpm: number;
-  restingHeartRateBpm: number;
-  hrvMs: number;
-  spO2Percent: number;
-  stepsToday: number;
-  sleepHoursLastNight: number;
-  skinTempCelsius: number;
-  stressScore: number;
-  missionDay: number;
-  microgravity: boolean;
-  isolationIndex: number;
-  radiationDoseMilliSvProxy: number;
+  heartRateBpm?: number | null;
+  restingHeartRateBpm?: number | null;
+  hrvMs?: number | null;
+  spO2Percent?: number | null;
+  stepsToday?: number | null;
+  sleepHoursLastNight?: number | null;
+  skinTempCelsius?: number | null;
+  stressScore?: number | null;
+  missionDay?: number | null;
+  microgravity?: boolean | null;
+  isolationIndex?: number | null;
+  radiationDoseMilliSvProxy?: number | null;
   selfReportedSymptoms: SymptomDto[];
+  /** Read-time only (never stored): present for fields filled by backend estimation. */
+  estimates?: {
+    hrvMs?: EstimateDto;
+    restingHeartRateBpm?: EstimateDto;
+    sleepHoursLastNight?: EstimateDto;
+    stressScore?: EstimateDto;
+  };
+};
+
+export type EstimateDto = {
+  method: string;
+  confidence: "low" | "medium";
+  sampleCount: number;
 };
 
 export type RecommendedActionDto = {
@@ -60,6 +73,7 @@ export type HealthAssessmentDto = {
 export type TelemetryBatchRequest = {
   crewMemberId: string;
   clientBatchId: string;
+  appVersion?: string | null;
   readings: SensorReadingDto[];
   assessments: HealthAssessmentDto[];
 };

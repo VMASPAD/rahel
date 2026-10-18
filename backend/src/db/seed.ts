@@ -6,6 +6,10 @@ import { isDatabaseEmpty } from "./database.js";
 import { loadSeed } from "../store/telemetryStore.js";
 
 export function seedIfEmpty(): void {
+  if (process.env.RAHEL_ENABLE_SEED !== "true") {
+    console.log("SQLite seed disabled (RAHEL_ENABLE_SEED=true to load seed-dashboard.json)");
+    return;
+  }
   if (!isDatabaseEmpty()) {
     console.log("SQLite already has data — skip seed");
     return;
