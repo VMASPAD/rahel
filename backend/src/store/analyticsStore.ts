@@ -464,8 +464,8 @@ export function sensorsAnalytics(device: OwnedDevice, fields: FieldsAnalytics): 
       label: f.label,
       reason:
         rows.length === 0
-          ? "El reloj aún no ha enviado su inventario de sensores."
-          : "Ningún sensor detectado disponible alimenta este campo.",
+          ? "The watch has not sent its sensor inventory yet."
+          : "None of the detected sensors feeds this field.",
     }));
 
   return {

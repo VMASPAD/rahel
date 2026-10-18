@@ -162,6 +162,27 @@ function migrate(db: Database.Database): void {
     );
   `);
 
+  // On-demand AI analysis reports (optional, consent per run). Additive and idempotent.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS analysis_runs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      window_hours INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      consent_at INTEGER NOT NULL,
+      summary_hash TEXT,
+      results_json TEXT,
+      error TEXT,
+      created_at INTEGER NOT NULL,
+      finished_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_analysis_runs_user_created
+      ON analysis_runs (user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_analysis_runs_user_status
+      ON analysis_runs (user_id, status);
+  `);
+
   // Dedupe existing rows, then enforce uniqueness. Only when the unique indexes do not exist yet:
   // the dedupe scans whole tables (millions of rows at 1 Hz) and must not run on every start.
   const hasUnique = (name: string) =>

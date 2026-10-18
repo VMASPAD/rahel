@@ -5,9 +5,20 @@ import path from "node:path";
 
 const API_PREFIXES = ["/api", "/profile", "/telemetry"];
 
-/** Rutas válidas del SPA: /, /app y /app/* (con o sin barra final). */
-function isSpaRoute(p: string): boolean {
-  return p === "/" || p === "/app" || p === "/app/" || p.startsWith("/app/");
+/** Rutas válidas del SPA: /, /app, /demo y sus subrutas (con o sin barra final). */
+export function isSpaRoute(p: string): boolean {
+  return (
+    p === "/" ||
+    p === "/app" ||
+    p.startsWith("/app/") ||
+    p === "/demo" ||
+    p.startsWith("/demo/")
+  );
+}
+
+/** Rutas privadas o de demostración: se sirven con noindex. */
+export function isNoindexRoute(p: string): boolean {
+  return /^\/(app|demo)(\/|$)/.test(p);
 }
 
 const MIME: Record<string, string> = {
@@ -59,7 +70,7 @@ export function mountStaticWeb(app: Express): void {
     }
     // Un asset/archivo inexistente nunca debe caer en el HTML con 200.
     if (isSpaRoute(req.path)) {
-      sendIndex(res, 200, req.path.startsWith("/app"));
+      sendIndex(res, 200, isNoindexRoute(req.path));
       return;
     }
     if (path.extname(req.path)) {

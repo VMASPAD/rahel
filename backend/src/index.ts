@@ -6,17 +6,20 @@ import type { NextFunction, Request, Response } from "express";
 import { IS_PRODUCTION } from "./auth/crypto.js";
 import { initDatabase } from "./db/database.js";
 import { seedIfEmpty } from "./db/seed.js";
+import { analysisRoutes } from "./routes/analysisRoutes.js";
 import { analyticsRoutes } from "./routes/analyticsRoutes.js";
 import { authRoutes } from "./routes/authRoutes.js";
 import { healthRoutes } from "./routes/healthRoutes.js";
 import { pairingRoutes } from "./routes/pairingRoutes.js";
 import { mountStaticWeb } from "./staticWeb.js";
+import { failInterruptedRuns } from "./store/analysisStore.js";
 import { cleanupExpired } from "./store/accountStore.js";
 import { purgeIngestLog } from "./store/ingestLogStore.js";
 import { purgeOldReadings } from "./store/telemetryStore.js";
 
 initDatabase();
 seedIfEmpty();
+failInterruptedRuns();
 cleanupExpired();
 setInterval(cleanupExpired, 60_000).unref();
 purgeIngestLog();
@@ -97,6 +100,7 @@ app.use(authRoutes);
 app.use(pairingRoutes);
 app.use(healthRoutes);
 app.use(analyticsRoutes);
+app.use(analysisRoutes);
 mountStaticWeb(app);
 
 app.use((_req, res) => {

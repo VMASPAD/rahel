@@ -1,6 +1,6 @@
 /**
  * Pure rules for field coverage / quality / recommendation. No I/O: unit tested.
- * Every recommendation carries a human-readable reason (Spanish) and a stable reasonCode.
+ * Every recommendation carries a human-readable reason (English) and a stable reasonCode.
  */
 
 export const FIELD_KEYS = [
@@ -36,18 +36,18 @@ export const CONTEXT_FIELDS: ReadonlySet<string> = new Set([
 ]);
 
 export const FIELD_LABELS: Record<FieldKey, string> = {
-  heartRateBpm: "Frecuencia cardiaca",
-  restingHeartRateBpm: "FC en reposo",
-  hrvMs: "Variabilidad (HRV)",
+  heartRateBpm: "Heart rate",
+  restingHeartRateBpm: "Resting heart rate",
+  hrvMs: "Heart rate variability (HRV)",
   spO2Percent: "SpO₂",
-  stepsToday: "Pasos hoy",
-  sleepHoursLastNight: "Sueño (h)",
-  skinTempCelsius: "Temperatura de piel",
-  stressScore: "Estrés",
-  missionDay: "Día de misión",
-  microgravity: "Microgravedad",
-  isolationIndex: "Índice de aislamiento",
-  radiationDoseMilliSvProxy: "Dosis de radiación (proxy)",
+  stepsToday: "Steps today",
+  sleepHoursLastNight: "Sleep (h)",
+  skinTempCelsius: "Skin temperature",
+  stressScore: "Stress",
+  missionDay: "Mission day",
+  microgravity: "Microgravity",
+  isolationIndex: "Isolation index",
+  radiationDoseMilliSvProxy: "Radiation dose (proxy)",
 };
 
 export type Quality = "medido" | "estimado" | "no recibido";
@@ -110,7 +110,7 @@ export function assessField(f: FieldInput): FieldAssessment {
       quality: "no recibido",
       recommendation: "requiere sensor",
       reasonCode: "no_readings",
-      reason: "Aún no hay lecturas en la ventana analizada; no se puede valorar el campo.",
+      reason: "No readings in the analyzed window yet, so this field will be rated once data arrives.",
     };
   }
 
@@ -122,7 +122,7 @@ export function assessField(f: FieldInput): FieldAssessment {
         recommendation: "usar con cautela",
         reasonCode: "estimated_only",
         reason:
-          "El reloj no lo envía; el servidor lo estima a partir de FC y pasos (confianza baja/media). Útil como tendencia, no como medición.",
+          "RaHel calculates this from your heart rate and steps (low to medium confidence). A great trend indicator rather than a direct measurement.",
       };
     }
     if (CONTEXT_FIELDS.has(f.key)) {
@@ -131,7 +131,7 @@ export function assessField(f: FieldInput): FieldAssessment {
         quality: "no recibido",
         recommendation: "candidato a descartar",
         reasonCode: "context_missing",
-        reason: "Campo de contexto de misión que no llega; no procede de ningún sensor.",
+        reason: "Mission context field that is not arriving; it does not come from any sensor.",
       };
     }
     if (f.key === "skinTempCelsius") {
@@ -141,7 +141,7 @@ export function assessField(f: FieldInput): FieldAssessment {
         recommendation: "requiere sensor",
         reasonCode: "needs_sensor_no_estimate",
         reason:
-          "Requiere un sensor de temperatura de piel; la temperatura ambiente no lo sustituye y el servidor no lo estima.",
+          "Needs a skin temperature sensor; ambient temperature is not a substitute and the server does not estimate it.",
       };
     }
     return {
@@ -150,8 +150,8 @@ export function assessField(f: FieldInput): FieldAssessment {
       recommendation: "requiere sensor",
       reasonCode: "needs_sensor",
       reason: ESTIMABLE_FIELDS.has(f.key)
-        ? "No llega ni hay historial suficiente para estimarlo; requiere sensor o más datos de FC/pasos."
-        : "El reloj no envía este dato; requiere un sensor o permiso (revisa «Sensores detectados»).",
+        ? "RaHel needs a little more heart rate and step history to calculate this; it appears as soon as there is enough."
+        : "This value is not part of the readings RaHel currently works with.",
     };
   }
 
@@ -167,8 +167,8 @@ export function assessField(f: FieldInput): FieldAssessment {
       ...base,
       recommendation: "candidato a descartar",
       reasonCode: "constant_value",
-      reason: `Valor constante (${fmt(f.min)}) en ${f.nonNull} lecturas: no aporta información${
-        CONTEXT_FIELDS.has(f.key) ? " (dato de contexto fijo, no un sensor)" : ""
+      reason: `Constant value (${fmt(f.min)}) across ${f.nonNull} readings, so it adds no information${
+        CONTEXT_FIELDS.has(f.key) ? " (fixed context value, not a sensor)" : ""
       }.`,
     };
   }
@@ -181,7 +181,7 @@ export function assessField(f: FieldInput): FieldAssessment {
       ...base,
       recommendation: "usar con cautela",
       reasonCode: "stale",
-      reason: `Dejó de llegar hace ${ago(f.deviceLastMs - f.lastSeenMs)} respecto a la última lectura del reloj.`,
+      reason: `Stopped arriving ${ago(f.deviceLastMs - f.lastSeenMs)} before the watch's latest reading.`,
     };
   }
   if (cov < LOW_COVERAGE * 100) {
@@ -189,8 +189,8 @@ export function assessField(f: FieldInput): FieldAssessment {
       ...base,
       recommendation: "usar con cautela",
       reasonCode: "low_coverage",
-      reason: `Cobertura baja (${cov}%): llega en pocas lecturas${
-        f.estimatedCount > 0 ? "; el resto se estima en el servidor" : ""
+      reason: `Low coverage (${cov}%): it arrives in only a few readings${
+        f.estimatedCount > 0 ? "; the rest is estimated on the server" : ""
       }.`,
     };
   }
@@ -199,14 +199,14 @@ export function assessField(f: FieldInput): FieldAssessment {
       ...base,
       recommendation: "usar con cautela",
       reasonCode: "partial_coverage",
-      reason: `Cobertura parcial (${cov}%): hay huecos (p. ej. sin contacto con la muñeca o sin permiso intermitente).`,
+      reason: `Partial coverage (${cov}%): there are gaps (for example, the watch was off the wrist or a permission came and went).`,
     };
   }
   return {
     ...base,
     recommendation: "mantener",
     reasonCode: "good",
-    reason: `Medido por el reloj con cobertura alta (${cov}%) y variación real.`,
+    reason: `Measured by the watch with high coverage (${cov}%) and real variation.`,
   };
 }
 

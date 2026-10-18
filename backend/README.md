@@ -27,6 +27,10 @@ Tests: `npm test` (node:test vía tsx).
 | `RAHEL_TRUST_PROXY` | `trust proxy` de Express para rate limiting tras Traefik/Coolify (`1` por defecto en prod, `false` en dev; acepta número, `true`/`false` o lista de subredes). |
 | `RAHEL_ALLOW_LEGACY_INGEST` | `true` permite `/profile` y `/telemetry/batch` sin `X-Device-Token` usando `crewMemberId` del body. **Solo dev**, se ignora en producción. |
 | `RAHEL_RETENTION_DAYS` | Días que se conservan las lecturas crudas (`sensor_readings`); por defecto **30**, `0` desactiva la purga. Se ejecuta al arrancar y cada hora, por trozos de 20 000 filas vía el índice `(crew_member_id, recorded_at_epoch_ms)`. |
+| `RAHEL_TYPESAFE_API_KEY` | Clave de TypeSafe AI (Jev) para la página «Análisis». **Solo servidor.** Sin ella la API responde `analysis_not_configured`. Ver `docs/analysis.md`. |
+| `RAHEL_TYPESAFE_BASE_URL`, `RAHEL_TYPESAFE_MODEL`, `RAHEL_TYPESAFE_TIMEOUT_MS` | Opcionales: `https://api.typesafe.ai`, `jev-latest`, `30000`. |
+| `RAHEL_ANALYSIS_RUNS_PER_HOUR`, `RAHEL_ANALYSIS_GROUP_SIZE`, `RAHEL_ANALYSIS_CONCURRENCY` | Opcionales: 10 ejecuciones/hora/usuario, 5 preguntas por petición, 2 peticiones simultáneas. |
+| `RAHEL_TYPESAFE_FAKE` | `1` usa un cliente simulado determinista (**solo fuera de producción**, para desarrollo y pruebas). |
 | `RAHEL_DB_PATH`, `RAHEL_ENABLE_SEED`, `PORT`, `HOST`, `STATIC_WEB_ROOT` | Sin cambios. Los datos del seed no pertenecen a ningún usuario, por lo que no son visibles en el dashboard autenticado. |
 
 - Lectura (`/api/crew*`): Bearer JWT; solo dispositivos propios (`devices.user_id`); si no es propio, `404 {"error":"crew not found"}`.
