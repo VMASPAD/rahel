@@ -12,15 +12,24 @@ export type SymptomDto = {
   severity: string
 }
 
+export type EstimateInfo = {
+  method: string
+  confidence: 'low' | 'medium'
+  sampleCount: number
+}
+
+export type EstimatedField = 'hrvMs' | 'restingHeartRateBpm' | 'sleepHoursLastNight' | 'stressScore'
+
 export type SensorReadingDto = {
+  estimates?: Partial<Record<EstimatedField, EstimateInfo>>
   recordedAtEpochMs: number
-  heartRateBpm: number
-  restingHeartRateBpm: number
-  hrvMs: number
-  spO2Percent: number
-  stepsToday: number
-  sleepHoursLastNight: number
-  skinTempCelsius: number
+  heartRateBpm: number | null
+  restingHeartRateBpm: number | null
+  hrvMs: number | null
+  spO2Percent: number | null
+  stepsToday: number | null
+  sleepHoursLastNight: number | null
+  skinTempCelsius: number | null
   stressScore: number
   missionDay: number
   microgravity: boolean

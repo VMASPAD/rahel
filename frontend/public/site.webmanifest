@@ -1,0 +1,16 @@
+{
+  "name": "RaHel",
+  "short_name": "RaHel",
+  "description": "Monitoreo de salud de tripulantes con reloj Wear OS y panel web.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#04281A",
+  "theme_color": "#007A39",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

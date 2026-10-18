@@ -10,16 +10,16 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.65rem 0.75rem;
-  border: 1px solid #263238;
+  border: 1px solid #14503C;
   border-radius: 8px;
-  background: #12181f;
-  color: #eceff1;
+  background: #08362A;
+  color: #FFE5E7;
   cursor: pointer;
   margin-bottom: 0.35rem;
 }
 
 .crew-btn.active {
-  border-color: #64b5f6;
+  border-color: #5EE0A0;
 }
 
 .crew-id {
@@ -45,7 +45,7 @@
 .badge.watch { background: #f57f17; color: #fff8e1; }
 .badge.elevated { background: #e65100; color: #ffe0b2; }
 .badge.critical { background: #b71c1c; color: #ffcdd2; }
-.badge.unknown { background: #37474f; color: #cfd8dc; }
+.badge.unknown { background: #14503C; color: #d9c9cb; }
 
 .vitals {
   margin: 0;
@@ -55,7 +55,7 @@
   display: flex;
   justify-content: space-between;
   padding: 0.35rem 0;
-  border-bottom: 1px solid #1e2830;
+  border-bottom: 1px solid #0c4531;
 }
 
 .vital-row dt {
@@ -93,10 +93,89 @@
 .cond-meta {
   display: block;
   font-size: 0.75rem;
-  color: #64b5f6;
+  color: #5EE0A0;
 }
 
 .muted {
   color: #78909c;
   margin: 0;
+}
+
+.charts-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.chart-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #81c784;
+  font-weight: 500;
+}
+
+.live-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #81c784;
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+}
+
+.chart-updated {
+  color: #90a4ae;
+}
+
+.chart-block h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: #d9c9cb;
+  font-weight: 600;
+}
+
+.chart-wrap {
+  width: 100%;
+  min-height: 220px;
+}
+
+.evilcharts-credit {
+  color: #5EE0A0;
+  text-decoration: none;
+}
+
+.evilcharts-credit:hover {
+  text-decoration: underline;
+}
+
+.est-tag {
+  margin-left: 0.4rem;
+  padding: 0 0.35rem;
+  border: 1px dashed #5EE0A0;
+  border-radius: 4px;
+  color: #5EE0A0;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.7rem;
+  cursor: help;
 }

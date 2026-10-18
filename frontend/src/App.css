@@ -1,5 +1,9 @@
+@import '@fontsource-variable/outfit';
+@import '@fontsource/ibm-plex-mono/400.css';
 .page {
-  max-width: 720px;
+  font-family: 'Outfit Variable', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  max-width: 960px;
   margin: 0 auto;
   padding: 3rem 1.5rem 4rem;
 }
@@ -12,7 +16,8 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.75rem;
-  color: #64b5f6;
+  color: #5EE0A0;
+  font-family: var(--mono);
   margin: 0 0 0.5rem;
 }
 
@@ -25,7 +30,7 @@ h1 {
 .lead {
   font-size: 1.125rem;
   line-height: 1.6;
-  color: #b0bec5;
+  color: #b9c9c0;
   margin: 0;
 }
 
@@ -43,19 +48,68 @@ h1 {
   }
 }
 
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #d9c9cb;
+}
+
+.auth-form input {
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #14503C;
+  background: #063022;
+  color: #FFE5E7;
+}
+
+.linkish {
+  background: none;
+  border: none;
+  color: #5EE0A0;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.linkish.logout {
+  margin-left: 0.75rem;
+}
+
+.device-list {
+  margin: 1rem 0 0;
+  padding-left: 1.25rem;
+  color: #b9c9c0;
+}
+
+.backup-live {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: #81c784;
+}
+
 .refresh {
   margin-top: 0.75rem;
   padding: 0.4rem 0.9rem;
   border-radius: 6px;
-  border: 1px solid #37474f;
-  background: #1e2830;
-  color: #eceff1;
+  border: 1px solid #14503C;
+  background: #0c4531;
+  color: #FFE5E7;
   cursor: pointer;
 }
 
 .card {
-  background: #12181f;
-  border: 1px solid #263238;
+  background: #08362A;
+  border: 1px solid #14503C;
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1rem;
@@ -64,7 +118,7 @@ h1 {
 .card h2 {
   margin: 0 0 0.75rem;
   font-size: 1rem;
-  color: #eceff1;
+  color: #FFE5E7;
 }
 
 .card ul {
@@ -86,7 +140,36 @@ h1 {
 
 code {
   font-size: 0.9em;
-  background: #1e2830;
+  background: #0c4531;
   padding: 0.1em 0.35em;
   border-radius: 4px;
+}
+
+.page h1,
+.page h2 {
+  color: #FFE5E7;
+  font-family: 'Outfit Variable', system-ui, sans-serif;
+}
+
+.auth-form button,
+.page button[type='submit'] {
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: #007a39;
+  color: #ffe5e7;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-form button:hover:not(:disabled),
+.page button[type='submit']:hover:not(:disabled) {
+  background: #0a9648;
+}
+
+.auth-form button:disabled,
+.page button[type='submit']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

@@ -1,25 +1,43 @@
-import type { SensorReadingDto } from '../types/health'
+import type { EstimatedField, SensorReadingDto } from '../types/health'
 import './dashboard.css'
+
+const fmt = (v: number | null | undefined, unit: string) =>
+  v == null ? 'Sin dato' : `${v}${unit}`
 
 export function VitalSummary({ reading }: { reading: SensorReadingDto | null }) {
   if (!reading) return <p className="muted">Sin lecturas aún.</p>
-  const rows = [
-    ['FC', `${reading.heartRateBpm} bpm`],
-    ['FC reposo', `${reading.restingHeartRateBpm} bpm`],
-    ['HRV', `${reading.hrvMs} ms`],
-    ['SpO₂', `${reading.spO2Percent}%`],
-    ['Sueño', `${reading.sleepHoursLastNight} h`],
-    ['Estrés', `${reading.stressScore}/100`],
-    ['Día misión', String(reading.missionDay)],
+  const est = (field: EstimatedField) => reading.estimates?.[field]
+  const rows: [string, string, EstimatedField?][] = [
+    ['FC', fmt(reading.heartRateBpm, ' bpm')],
+    ['FC reposo', fmt(reading.restingHeartRateBpm, ' bpm'), 'restingHeartRateBpm'],
+    ['HRV', fmt(reading.hrvMs, ' ms'), 'hrvMs'],
+    ['SpO₂', fmt(reading.spO2Percent, '%')],
+    ['Sueño', fmt(reading.sleepHoursLastNight, ' h'), 'sleepHoursLastNight'],
+    ['Temp. piel', fmt(reading.skinTempCelsius, ' °C')],
+    ['Estrés', fmt(reading.stressScore, '/100'), 'stressScore'],
+    ['Día misión', fmt(reading.missionDay, '')],
   ]
   return (
     <dl className="vitals">
-      {rows.map(([k, v]) => (
+      {rows.map(([k, v, field]) => {
+        const e = field ? est(field) : undefined
+        return (
         <div key={k} className="vital-row">
           <dt>{k}</dt>
-          <dd>{v}</dd>
+          <dd>
+            {v}
+            {e && (
+              <span
+                className="est-tag"
+                title={`Estimado a partir del historial del reloj (${e.sampleCount} muestras, confianza ${e.confidence === 'low' ? 'baja' : 'media'}). No es una medición.`}
+              >
+                est.
+              </span>
+            )}
+          </dd>
         </div>
-      ))}
+        )
+      })}
     </dl>
   )
 }
