@@ -1,15 +1,19 @@
 package xyz.targapps.rahel.complication
 
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationType
 import androidx.wear.watchface.complications.data.PlainComplicationText
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
-import java.util.Calendar
+import xyz.targapps.rahel.RaHelApp
+import xyz.targapps.rahel.presentation.MainActivity
 
 /**
- * Skeleton for complication data source that returns short text.
+ * RaHel complication: the latest heart rate for the watch face (short text). Tapping it opens the app.
+ * It is refreshed by the app every minute while monitoring is on.
  */
 class MainComplicationService : SuspendingComplicationDataSourceService() {
 
@@ -17,25 +21,29 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         if (type != ComplicationType.SHORT_TEXT) {
             return null
         }
-        return createComplicationData("Mon", "Monday")
+        return createComplicationData(heartRateBpm = 72)
     }
 
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData {
-        return when (Calendar.getInstance().get(Calendar.DAY_OF_WEEK)) {
-            Calendar.SUNDAY -> createComplicationData("Sun", "Sunday")
-            Calendar.MONDAY -> createComplicationData("Mon", "Monday")
-            Calendar.TUESDAY -> createComplicationData("Tue", "Tuesday")
-            Calendar.WEDNESDAY -> createComplicationData("Wed", "Wednesday")
-            Calendar.THURSDAY -> createComplicationData("Thu", "Thursday")
-            Calendar.FRIDAY -> createComplicationData("Fri!", "Friday!")
-            Calendar.SATURDAY -> createComplicationData("Sat", "Saturday")
-            else -> throw IllegalArgumentException("too many days")
-        }
+        val bpm = (application as RaHelApp).sensorHub.liveMetrics.value.heartRateBpm
+        return createComplicationData(bpm)
     }
 
-    private fun createComplicationData(text: String, contentDescription: String) =
-        ShortTextComplicationData.Builder(
+    private fun createComplicationData(heartRateBpm: Int?): ShortTextComplicationData {
+        val text = heartRateBpm?.toString() ?: "--"
+        val description = heartRateBpm?.let { "Heart rate $it beats per minute" } ?: "Heart rate"
+        val open = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        return ShortTextComplicationData.Builder(
             text = PlainComplicationText.Builder(text).build(),
-            contentDescription = PlainComplicationText.Builder(contentDescription).build()
-        ).build()
+            contentDescription = PlainComplicationText.Builder(description).build(),
+        )
+            .setTitle(PlainComplicationText.Builder("bpm").build())
+            .setTapAction(open)
+            .build()
+    }
 }

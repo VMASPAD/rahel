@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Warning
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.foundation.lazy.ScalingLazyListScope
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
@@ -43,6 +44,8 @@ import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
+import androidx.wear.compose.material.PositionIndicator
+import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.TimeText
 import xyz.targapps.rahel.R
 import xyz.targapps.rahel.domain.AlertLevel
@@ -54,7 +57,8 @@ import xyz.targapps.rahel.presentation.theme.StatusWatch
 import xyz.targapps.rahel.presentation.theme.SurfaceMuted
 import xyz.targapps.rahel.sensor.SensorAvailability
 
-val WearContentPadding = PaddingValues(top = 28.dp, start = 10.dp, end = 10.dp, bottom = 40.dp)
+/** Round-screen safe margins: text must stay inside the curved edge even with the largest system font. */
+val WearContentPadding = PaddingValues(top = 28.dp, start = 18.dp, end = 18.dp, bottom = 40.dp)
 
 fun alertColor(level: AlertLevel) = when (level) {
     AlertLevel.NOMINAL -> StatusNominal
@@ -77,12 +81,20 @@ fun WearScrollScreen(
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
     content: ScalingLazyListScope.() -> Unit,
 ) {
-    ScalingLazyColumn(
+    val listState = rememberScalingLazyListState()
+    // Wear OS quality: a scrollable view must show the scrollbar while the user interacts with it.
+    Scaffold(
         modifier = modifier.fillMaxSize(),
-        contentPadding = WearContentPadding,
-        horizontalAlignment = horizontalAlignment,
-        content = content,
-    )
+        positionIndicator = { PositionIndicator(scalingLazyListState = listState) },
+    ) {
+        ScalingLazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            contentPadding = WearContentPadding,
+            horizontalAlignment = horizontalAlignment,
+            content = content,
+        )
+    }
 }
 
 @Composable
@@ -90,7 +102,7 @@ fun ScreenHeader(title: String, subtitle: String? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 10.dp),
+            .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(

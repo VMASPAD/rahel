@@ -51,8 +51,8 @@ android {
         applicationId = "xyz.targapps.rahel"
         minSdk = 30
         targetSdk = 36
-        versionCode = 14
-        versionName = "1.0.13"
+        versionCode = 17
+        versionName = "1.0.16"
 
         // Release URL; debug overrides in buildTypes.debug (see resolveDebugApiBaseUrl).
         buildConfigField("String", "API_BASE_URL", "\"https://rahel.hermesbackend.xyz/api/\"")
@@ -125,6 +125,7 @@ dependencies {
     implementation(libs.horologist.compose.tools)
     implementation(libs.horologist.tiles)
     implementation(libs.watchface.complications.data.source.ktx)
+    implementation(libs.wear.ongoing)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.health.services.client)

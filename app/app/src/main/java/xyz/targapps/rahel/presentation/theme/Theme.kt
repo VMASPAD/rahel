@@ -10,7 +10,8 @@ private val RaHelColors = Colors(
     primaryVariant = Color(0xFF005A29),
     secondary = BrandMint,
     secondaryVariant = BrandMintLight,
-    background = BrandForest,
+    // Wear OS quality (WO-V13): apps use a pure black background; Scaffold paints colors.background.
+    background = Color.Black,
     surface = SurfaceMuted,
     error = StatusCritical,
     onPrimary = BrandPink,

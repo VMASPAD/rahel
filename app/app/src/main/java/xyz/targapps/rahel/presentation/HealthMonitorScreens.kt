@@ -1,5 +1,6 @@
 package xyz.targapps.rahel.presentation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -69,6 +70,9 @@ fun HealthMonitorApp(
     monitoringEnabled: Boolean,
     onSetMonitoring: (Boolean) -> Unit,
 ) {
+    BackHandler(enabled = viewModel.screen == MonitorScreen.ConditionDetail) {
+        viewModel.navigate(MonitorScreen.Dashboard)
+    }
     RaHelTheme {
         WearScreenFrame {
             when (viewModel.screen) {
@@ -465,7 +469,8 @@ private fun ConditionChip(condition: ConditionAssessment, onClick: () -> Unit) {
 @Composable
 private fun ConditionDetailScreen(vm: HealthMonitorViewModel) {
     val condition = vm.selectedCondition()
-    WearScrollScreen(horizontalAlignment = Alignment.Start) {
+    // Centered, padded text: long paragraphs stay inside the round display at any system font size.
+    WearScrollScreen(horizontalAlignment = Alignment.CenterHorizontally) {
         item {
             ScreenHeader(
                 title = condition?.title ?: stringResource(R.string.screen_detail),
@@ -476,7 +481,10 @@ private fun ConditionDetailScreen(vm: HealthMonitorViewModel) {
                 Text(
                     text = condition.summary,
                     style = MaterialTheme.typography.body2,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 6.dp, vertical = 6.dp),
                 )
             }
             if (condition.symptoms.isNotEmpty()) {
@@ -487,7 +495,11 @@ private fun ConditionDetailScreen(vm: HealthMonitorViewModel) {
                     Text(
                         text = stringResource(R.string.bullet_item, s.label),
                         style = MaterialTheme.typography.caption2,
-                        modifier = Modifier.padding(start = 8.dp, bottom = 2.dp),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp)
+                            .padding(bottom = 2.dp),
                     )
                 }
             }
@@ -498,7 +510,11 @@ private fun ConditionDetailScreen(vm: HealthMonitorViewModel) {
                 Text(
                     text = stringResource(R.string.action_item, a.title, a.detail),
                     style = MaterialTheme.typography.caption2,
-                    modifier = Modifier.padding(bottom = 6.dp),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 6.dp)
+                        .padding(bottom = 6.dp),
                 )
             }
         }

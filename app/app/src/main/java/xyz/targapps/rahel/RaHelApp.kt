@@ -1,6 +1,13 @@
 package xyz.targapps.rahel
 
 import android.app.Application
+import android.content.ComponentName
+import android.util.Log
+import androidx.wear.tiles.TileService
+import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
+import kotlinx.coroutines.delay
+import xyz.targapps.rahel.complication.MainComplicationService
+import xyz.targapps.rahel.tile.MainTileService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -58,6 +65,17 @@ class RaHelApp : Application() {
     /** Called from the UI when the user taps Start / Stop monitoring. */
     fun setMonitoring(enabled: Boolean) {
         applicationScope.launch { userProfileRepository.setMonitoringEnabled(enabled) }
+    }
+
+    private fun refreshWatchSurfaces() {
+        try {
+            TileService.getUpdater(this).requestUpdate(MainTileService::class.java)
+            ComplicationDataSourceUpdateRequester
+                .create(this, ComponentName(this, MainComplicationService::class.java))
+                .requestUpdateAll()
+        } catch (e: Exception) {
+            Log.w("RaHelApp", "Could not refresh tile/complication", e)
+        }
     }
 
     val sensorHub: SensorHub
@@ -158,6 +176,20 @@ class RaHelApp : Application() {
         applicationScope.launch {
             _collectionEnabled.collectLatest { enabled -> if (enabled) recorder.run() }
         }
+        // Keep the tile and the watch-face complication current while monitoring runs.
+        applicationScope.launch {
+            _collectionEnabled.collectLatest { enabled ->
+                refreshWatchSurfaces()
+                if (enabled) {
+                    while (true) {
+                        delay(WATCH_SURFACE_REFRESH_MS)
+                        refreshWatchSurfaces()
+                    }
+                }
+            }
+        }
         HealthSyncScheduler.schedulePeriodic(this)
     }
 }
+
+private const val WATCH_SURFACE_REFRESH_MS = 60_000L

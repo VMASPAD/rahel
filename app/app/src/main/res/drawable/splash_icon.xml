@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- App icon for the branded launch: exactly 48 x 48 dp and circular (matches the launcher icon), centered, on the black splash background. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="96dp"
-    android:height="96dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
     <group
-        android:scaleX="0.366"
-        android:scaleY="0.366"
-        android:translateX="7.152"
-        android:translateY="7.152">
+        android:translateX="120"
+        android:translateY="120"
+        android:scaleX="0.1875"
+        android:scaleY="0.1875">
+        <path
+            android:fillColor="#007A39"
+            android:pathData="M0,128 A128,128 0 1 1 256,128 A128,128 0 1 1 0,128 Z" />
         <path
             android:fillColor="#FFE5E7"
             android:pathData="M40.59 95.432 L58.449 95.432 L58.449 120.646 L84.819 120.646 L84.819 95.432 L102.679 95.432 L102.679 164.56 L84.819 164.56 L84.819 137.455 L58.449 137.455 L58.449 164.56 L40.59 164.56 Z" />

@@ -14,6 +14,10 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationCompat
+import androidx.wear.ongoing.OngoingActivity
+import androidx.wear.ongoing.Status
+import xyz.targapps.rahel.R
 import xyz.targapps.rahel.RaHelApp
 import xyz.targapps.rahel.data.sensors.BodySensorPermissions
 import xyz.targapps.rahel.presentation.MainActivity
@@ -60,13 +64,22 @@ class HealthForegroundService : Service() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        return Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_ongoing)
             .setContentTitle("RaHel")
             .setContentText("Monitoring vital signs")
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
             .setOngoing(true)
             .setContentIntent(open)
+        // Ongoing Activity: shows the indicator on the watch face, a chip in recent apps, and lets the
+        // tile reference the running session. It is tied to this notification, so it ends with the service.
+        OngoingActivity.Builder(applicationContext, NOTIFICATION_ID, builder)
+            .setStaticIcon(R.drawable.ic_ongoing)
+            .setTouchIntent(open)
+            .setStatus(Status.Builder().addTemplate("Monitoring vitals").build())
             .build()
+            .apply(applicationContext)
+        return builder.build()
     }
 
     companion object {

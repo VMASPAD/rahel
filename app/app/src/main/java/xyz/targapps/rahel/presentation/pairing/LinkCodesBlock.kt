@@ -1,6 +1,8 @@
 package xyz.targapps.rahel.presentation.pairing
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -34,7 +36,7 @@ fun LinkCodesBlock(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -51,24 +53,35 @@ fun LinkCodesBlock(
         when {
             state.isLoading && code == null -> CircularProgressIndicator()
             code != null -> {
-                // Codes are alphanumeric with variable length: scale the font and group for readability.
-                val big = code.length <= 6
-                Text(
-                    text = if (code.length >= 7) code.chunked(4).joinToString(" ") else code,
-                    fontSize = when {
-                        big && !compact -> 36.sp
-                        big -> 28.sp
-                        !compact -> 26.sp
-                        else -> 20.sp
-                    },
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+                // Codes are alphanumeric with variable length. The font follows the user's system
+                // font size, but is capped so the code always fits the width (never cut by the edges).
+                val shown = if (code.length >= 7) code.chunked(4).joinToString(" ") else code
+                val wanted = when {
+                    code.length <= 6 && !compact -> 36f
+                    code.length <= 6 -> 28f
+                    !compact -> 26f
+                    else -> 20f
+                }
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    val fontScale = LocalDensity.current.fontScale
+                    val longestLine = shown.split(' ').maxOf { it.length }.coerceAtLeast(1)
+                    // ~0.62 em per monospace-ish digit; divide by fontScale because sp scales with it.
+                    val fits = maxWidth.value / (longestLine * 0.62f) / fontScale
+                    Text(
+                        text = shown,
+                        fontSize = minOf(wanted, fits).coerceAtLeast(12f).sp,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                    )
+                }
                 backup?.let {
                     Text(
                         text = stringResource(R.string.link_backup_code, it),
-                        fontSize = if (compact) 16.sp else 20.sp,
+                        fontSize = if (compact) 14.sp else 16.sp,
+                        textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 6.dp),
                     )
                     Text(

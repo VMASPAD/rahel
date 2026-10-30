@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.Button
+import androidx.activity.compose.BackHandler
 import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.MaterialTheme
@@ -30,6 +31,10 @@ import java.util.Locale
 
 @Composable
 fun OnboardingFlow(viewModel: OnboardingViewModel) {
+    // Swipe-to-dismiss goes back one step instead of dropping what the user already entered.
+    BackHandler(enabled = viewModel.step != OnboardingStep.Sexo && viewModel.step != OnboardingStep.Welcome) {
+        viewModel.back()
+    }
     RaHelTheme {
         WearScreenFrame {
             when (viewModel.step) {
