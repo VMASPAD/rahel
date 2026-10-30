@@ -1,6 +1,6 @@
 # Checklist de publicación en Google Play (RaHel, Wear OS)
 
-Datos de la app: paquete `xyz.targapps.rahel`, versionCode 14 / versionName 1.0.13, minSdk 30 (Wear OS 3+), targetSdk 36, app independiente (standalone), formato AAB.
+Datos de la app: paquete `xyz.targapps.rahel`, versionCode 17 / versionName 1.0.16, minSdk 30 (Wear OS 3+), targetSdk 36, app independiente (standalone), formato AAB.
 
 ## 0. Construir y firmar
 1. Crear `app/keystore.properties` (ver `app/keystore.properties.example`; está en .gitignore) o exportar `RAHEL_KEYSTORE_FILE`, `RAHEL_KEYSTORE_PASSWORD`, `RAHEL_KEY_ALIAS`, `RAHEL_KEY_PASSWORD`.

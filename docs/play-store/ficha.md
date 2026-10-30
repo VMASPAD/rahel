@@ -58,6 +58,11 @@ EL PANEL WEB
 • Analítica de sensores: qué campos llegan, con qué cobertura, cuáles son medidos o estimados y qué sensores detecta tu reloj, para decidir cuáles conservar.
 • Cada cuenta solo ve los relojes que ella misma vinculó, y puedes desvincular un reloj cuando quieras.
 
+TILE Y COMPLICACIÓN
+• Añade el tile de RaHel para ver tu pulso actual y si el monitoreo está activo, con un acceso directo a la app.
+• Añade la complicación de RaHel a tu esfera para ver el pulso de un vistazo.
+• Mientras el monitoreo está activo, RaHel muestra una actividad en curso en la esfera y en las apps recientes para volver a ella al instante.
+
 PRIVACIDAD Y SEGURIDAD
 • Los datos viajan cifrados (HTTPS).
 • Los códigos de vinculación caducan y tienen límite de intentos.
@@ -114,6 +119,11 @@ THE WEB DASHBOARD
 • See the latest reading and the history of every linked watch.
 • Sensor analytics: which fields arrive, with what coverage, which are measured or estimated and which sensors your watch detects, so you can decide which ones to keep.
 • Each account only sees the watches it linked itself, and you can unlink a watch at any time.
+
+TILE AND COMPLICATION
+• Add the RaHel tile to see your current heart rate and whether monitoring is on, with a one-tap shortcut into the app.
+• Add the RaHel complication to your watch face to read your heart rate at a glance.
+• While monitoring runs, RaHel shows an ongoing activity on your watch face and in recent apps so you can jump back in instantly.
 
 PRIVACY AND SECURITY
 • Data is encrypted in transit (HTTPS).
