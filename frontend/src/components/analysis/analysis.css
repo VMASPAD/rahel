@@ -1,0 +1,352 @@
+/* Página «Análisis»: reutiliza las variables de .an-page (analytics.css). Prefijo ay-. */
+.ay-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.ay-panel {
+  background: var(--an-surface);
+  border: 1px solid var(--an-line);
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 20px;
+}
+.ay-panel h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  color: #fff;
+}
+.ay-form {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-top: 12px;
+}
+.ay-sends {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--an-ink);
+  border: 1px solid var(--an-line);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.ay-sends h3 {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--an-mint);
+  font-weight: 500;
+}
+.ay-sends ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--an-text);
+  font-size: 0.9rem;
+}
+.ay-sends li + li {
+  margin-top: 2px;
+}
+.ay-consent {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--an-line);
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+.ay-consent:has(input:checked) {
+  border-color: var(--an-mint);
+  background: rgba(94, 224, 160, 0.07);
+}
+.ay-consent input {
+  width: 22px;
+  height: 22px;
+  margin: 2px 0 0;
+  accent-color: var(--an-green);
+  flex: none;
+}
+.ay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+}
+.ay-btn-ghost {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--an-line);
+  background: transparent;
+  color: var(--an-text);
+  font: inherit;
+  cursor: pointer;
+}
+.ay-btn-ghost:hover {
+  border-color: var(--an-mint);
+}
+.ay-note {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--an-line);
+  background: rgba(94, 224, 160, 0.06);
+  color: var(--an-text);
+  margin-top: 20px;
+}
+.ay-note--hint {
+  border-color: var(--an-amber);
+  background: rgba(245, 196, 107, 0.07);
+}
+.ay-msg {
+  margin: 12px 0 0;
+  color: var(--an-pink);
+}
+
+/* progreso */
+.ay-progress {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  margin: 12px 0;
+}
+.ay-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--an-mint);
+  transition: width 0.4s ease;
+}
+
+/* informe */
+.ay-report-head {
+  margin: 28px 0 14px;
+}
+.ay-report-head h2 {
+  margin: 2px 0 0;
+  font-size: 1.6rem;
+  color: #fff;
+}
+.ay-eyebrow {
+  margin: 0;
+  color: var(--an-mint);
+  font-size: 0.8rem;
+}
+.ay-card {
+  background: var(--an-surface);
+  border: 1px solid var(--an-line);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.ay-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.ay-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #fff;
+  font-weight: 600;
+}
+.ay-kind {
+  font-size: 0.7rem;
+  color: var(--an-muted);
+  border: 1px solid var(--an-line);
+  border-radius: 99px;
+  padding: 1px 8px;
+}
+.ay-card footer {
+  margin-top: auto;
+  font-size: 0.78rem;
+}
+.ay-card[data-state='error'] {
+  border-style: dashed;
+  border-color: var(--an-amber);
+}
+.ay-reading {
+  margin: 0;
+  color: var(--an-text);
+}
+.ay-conf {
+  margin: 0;
+}
+.ay-retry {
+  margin: 0;
+  color: var(--an-amber);
+}
+.ay-big {
+  margin: 4px 0 0;
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--an-mint);
+}
+.ay-meter-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+}
+.ay-meter-seg {
+  height: 10px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.ay-meter-seg[data-on='true'] {
+  background: linear-gradient(90deg, var(--an-green), var(--an-mint));
+}
+.ay-prob-bar {
+  height: 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.ay-prob-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--an-green), var(--an-mint));
+  border-radius: 99px;
+}
+.ay-chip {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 99px;
+  background: var(--an-pink);
+  color: var(--an-ink);
+  font-weight: 600;
+}
+.ay-skel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--an-muted);
+  min-height: 48px;
+}
+.ay-spin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--an-line);
+  border-top-color: var(--an-mint);
+  animation: ay-rot 0.9s linear infinite;
+}
+@keyframes ay-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ay-spin {
+    animation: none;
+  }
+  .ay-progress > span {
+    transition: none;
+  }
+}
+
+/* historial */
+.ay-history {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.ay-history li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--an-line);
+  border-radius: 12px;
+  background: var(--an-surface);
+}
+.ay-history li[data-current='true'] {
+  border-color: var(--an-mint);
+}
+.ay-history .ay-h-actions {
+  display: flex;
+  gap: 8px;
+}
+.ay-disclaimer {
+  margin-top: 28px;
+  color: var(--an-muted);
+  font-size: 0.85rem;
+  max-width: 70ch;
+}
+@media (max-width: 480px) {
+  .ay-panel {
+    padding: 16px;
+  }
+  .ay-btn-ghost,
+  .an-btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* Embedded in the shared app layout: content only, no page chrome. */
+.an-page.ay-embed {
+  min-height: 0;
+  background: transparent;
+  padding: 0;
+}
+.an-page.ay-embed .an-wrap {
+  max-width: none;
+}
+.ay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 3px 12px;
+  border: 1px solid var(--an-line);
+  border-radius: 999px;
+  background: var(--an-surface);
+  color: var(--an-mint);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+.ay-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--an-mint);
+}
+.ay-how {
+  margin: 0 0 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--an-line);
+  border-radius: 12px;
+  background: var(--an-surface);
+  max-width: 70ch;
+}
+.ay-how h2 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  color: #fff;
+}
+.ay-how ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.92rem;
+  color: var(--an-text);
+}
+
+/* Header: a single, calmer intro under the shared top bar */
+.ay-embed .an-title { font-size: clamp(1.35rem, 2.6vw, 1.8rem); margin: 0 0 0.5rem; }
+.ay-embed .an-lead { margin: 0 0 1.25rem; max-width: 62ch; }
+.ay-embed .ay-how { margin-top: 0.25rem; }
+.ay-embed .ay-how ul, .ay-embed .ay-sent ul, .ay-embed [class*="ay-sent"] ul { padding-left: 1.1rem; list-style: disc; }
+.ay-embed .ay-how li { margin: 0.2rem 0; }

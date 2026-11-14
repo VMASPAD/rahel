@@ -1,0 +1,100 @@
+<resources>
+    <string name="app_name">RaHel</string>
+    <string name="hello_world">From the Square world,\nHello, %1$s!</string>
+    <string name="tile_label">RaHel status</string>
+    <string name="complication_label">RaHel alert</string>
+
+    <string name="status_loading">Loading…</string>
+    <string name="home_mission_line">Mission day %1$d · %2$s</string>
+    <string name="nav_vitals">Vitals</string>
+    <string name="nav_risks">Risks</string>
+    <string name="nav_seed">SEED demo</string>
+    <string name="page_overview">Summary</string>
+    <string name="page_sensors">Sensors</string>
+    <string name="page_alerts">Alerts</string>
+    <string name="page_sync">Sync</string>
+    <string name="section_live_vitals">Live vitals</string>
+    <string name="section_z_scores">Z-score</string>
+    <string name="section_sensors">Availability</string>
+    <string name="sensor_available">Active</string>
+    <string name="sensor_unavailable">Unavailable</string>
+    <string name="vital_motion">Motion</string>
+    <string name="vital_barometer">Pressure</string>
+    <string name="z_score_format">z = %1$.1f</string>
+    <string name="sync_last_upload">Last upload</string>
+    <string name="sync_never">Not yet</string>
+    <string name="sync_pending">Pending</string>
+    <string name="sync_action">Sync now</string>
+    <string name="sync_in_progress">Syncing…</string>
+    <string name="sync_auto_on">Auto-sync on</string>
+    <string name="sync_auto_off">Auto-sync off</string>
+    <string name="sync_linked_as">Linked · %1$s</string>
+    <string name="sync_link_to_upload">Link your watch to upload data</string>
+    <string name="link_title">Link account</string>
+    <string name="link_title_compact">Link to web</string>
+    <string name="link_enter_code_hint">Enter this code on the web to link your watch</string>
+    <string name="link_backup_code">Backup %1$s</string>
+    <string name="link_auto_renews">Connected · auto-renews</string>
+    <string name="app_version_label">RaHel v%1$s (%2$d)</string>
+    <string name="monitoring_start">Start monitoring</string>
+    <string name="monitoring_stop">Stop monitoring</string>
+    <string name="monitoring_status_on">Monitoring is on</string>
+    <string name="monitoring_status_off">Monitoring is off</string>
+    <string name="swipe_hint">Swipe for more screens</string>
+    <string name="section_space_events">Space events</string>
+    <string name="action_back">Back</string>
+    <string name="cd_selected">Selected</string>
+
+    <string name="screen_vitals">Vital signs</string>
+    <string name="screen_assessment">Assessment</string>
+    <string name="screen_detail">Details</string>
+    <string name="screen_seed">SEED profile</string>
+    <string name="assessment_empty">No conditions detected for this profile.</string>
+    <string name="section_symptoms">Symptoms</string>
+    <string name="section_actions">Actions</string>
+    <string name="bullet_item">— %1$s</string>
+    <string name="action_item">%1$s: %2$s</string>
+
+    <string name="vital_hr">HR</string>
+    <string name="vital_resting_hr">Resting HR</string>
+    <string name="vital_hrv">HRV</string>
+    <string name="vital_spo2">SpO₂</string>
+    <string name="vital_steps">Steps</string>
+    <string name="vital_sleep">Sleep</string>
+    <string name="vital_stress">Stress</string>
+    <string name="vital_skin_temp">Skin temp.</string>
+
+    <string name="onboarding_welcome_title">RaHel profile</string>
+    <string name="onboarding_welcome_subtitle">A few details to personalize your readings.</string>
+    <string name="onboarding_start">Start</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_finish">Save</string>
+    <string name="onboarding_saving">Saving…</string>
+    <string name="onboarding_step_indicator">Step %1$d of %2$d</string>
+
+    <string name="onboarding_sexo_title">Biological sex</string>
+    <string name="onboarding_sexo_subtitle">Sex at birth</string>
+    <string name="onboarding_sexo_femenino">Female</string>
+    <string name="onboarding_sexo_masculino">Male</string>
+
+    <string name="onboarding_peso_title">Weight</string>
+    <string name="onboarding_peso_subtitle">In kilograms</string>
+    <string name="onboarding_peso_value">%1$.0f kg</string>
+
+    <string name="onboarding_altura_title">Height</string>
+    <string name="onboarding_altura_subtitle">Used to calculate BMI</string>
+    <string name="onboarding_altura_cm">%1$d cm</string>
+    <string name="onboarding_altura_m">%1$.2f m</string>
+    <string name="onboarding_unit_cm">cm</string>
+    <string name="onboarding_unit_m">m</string>
+
+    <string name="onboarding_confirm_title">Summary</string>
+    <string name="onboarding_confirm_subtitle">Review before continuing</string>
+    <string name="onboarding_summary_sexo">Sex</string>
+    <string name="onboarding_summary_peso">Weight</string>
+    <string name="onboarding_summary_altura">Height</string>
+    <string name="onboarding_summary_imc">BMI: %1$s</string>
+
+    <string name="onboarding_decrease">Decrease</string>
+    <string name="onboarding_increase">Increase</string>
+</resources>

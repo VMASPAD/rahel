@@ -1,0 +1,14 @@
+<es-419>
+Primera versión de RaHel.
+• Mide el pulso y los pasos desde tu reloj, y la saturación de oxígeno (SpO₂) en los modelos compatibles.
+• Muestra una evaluación de bienestar en pantalla.
+• Envía los datos de forma segura a tu panel web, con vinculación por código de un solo uso.
+• Si no hay conexión, guarda las lecturas y las envía al volver la red.
+</es-419>
+<en-US>
+First release of RaHel.
+• Measures heart rate and steps from your watch, and blood oxygen (SpO₂) on supported models.
+• Shows a wellbeing assessment on screen.
+• Securely sends your data to your web dashboard, linked with a one-time code.
+• If there is no connection, it stores readings and sends them when the network returns.
+</en-US>

@@ -1,0 +1,4 @@
+node_modules
+dist
+data/rahel.db
+data/rahel.db-*

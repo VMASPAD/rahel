@@ -1,0 +1,36 @@
+# Coolify / Traefik — RaHel (un contenedor: nginx :80 → API :8080 interna)
+# Dominio: https://rahel.hermesbackend.xyz
+# API pública: https://rahel.hermesbackend.xyz/api/...
+# Wear OS (Retrofit): POST /profile y POST /telemetry/batch en el mismo host (sin /api)
+
+traefik.enable=true
+
+traefik.http.middlewares.gzip.compress=true
+traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+
+# --- HTTP → HTTPS ---
+traefik.http.routers.http-rahel.entryPoints=http
+traefik.http.routers.http-rahel.middlewares=redirect-to-https
+traefik.http.routers.http-rahel.rule=Host(`rahel.hermesbackend.xyz`)
+traefik.http.routers.http-rahel.service=rahel-svc
+
+# --- HTTPS: backend (prioridad alta) ---
+traefik.http.routers.https-rahel-api.entryPoints=https
+traefik.http.routers.https-rahel-api.rule=Host(`rahel.hermesbackend.xyz`) && (PathPrefix(`/api`) || PathPrefix(`/profile`) || PathPrefix(`/telemetry`))
+traefik.http.routers.https-rahel-api.priority=100
+traefik.http.routers.https-rahel-api.middlewares=gzip
+traefik.http.routers.https-rahel-api.tls=true
+traefik.http.routers.https-rahel-api.tls.certresolver=letsencrypt
+traefik.http.routers.https-rahel-api.service=rahel-svc
+
+# --- HTTPS: frontend SPA ---
+traefik.http.routers.https-rahel-web.entryPoints=https
+traefik.http.routers.https-rahel-web.rule=Host(`rahel.hermesbackend.xyz`)
+traefik.http.routers.https-rahel-web.priority=1
+traefik.http.routers.https-rahel-web.middlewares=gzip
+traefik.http.routers.https-rahel-web.tls=true
+traefik.http.routers.https-rahel-web.tls.certresolver=letsencrypt
+traefik.http.routers.https-rahel-web.service=rahel-svc
+
+# Contenedor Docker RaHel expone Express (API + web) en 80
+traefik.http.services.rahel-svc.loadbalancer.server.port=80

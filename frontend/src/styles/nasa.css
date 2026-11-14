@@ -1,0 +1,76 @@
+/* NASA evidence sections of the landing (builds on the .lp tokens). Prefix: ns- */
+.lp { --rose: #b4233a; --paper: #fff7f8; }
+.ns-rule :focus-visible { outline-color: var(--mint); }
+
+/* Hero: copy + the published figures side by side */
+.ns-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(2rem, 5vw, 3.5rem); align-items: center; }
+@media (min-width: 1000px) { .ns-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); } }
+.ns-h { font-size: clamp(1.9rem, 4.4vw, 3.2rem); max-width: 18ch; }
+.ns-hero .lp-lead { max-width: 52ch; }
+.ns-more { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin: 1.5rem 0 0; font-weight: 600; }
+.ns-more a { color: var(--green); text-underline-offset: 3px; }
+
+/* Published figures */
+.ns-fig { margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 1.5rem; padding: clamp(1.1rem, 3vw, 1.75rem); min-width: 0; box-shadow: 0 30px 60px -40px rgba(4, 40, 26, 0.5); }
+.ns-fig-head { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; font-size: 1.1rem; line-height: 1.3; letter-spacing: -0.01em; }
+.ns-tag { align-self: flex-start; font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--forest); border: 1px solid var(--forest); border-radius: 999px; padding: 0.15rem 0.6rem; }
+.ns-fig-group { margin-top: 1rem; }
+.ns-fig-group-title { margin: 0 0 0.4rem; font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--slate); }
+.ns-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+.ns-bars li { display: grid; grid-template-columns: 2.4rem minmax(0, 1fr) 3.6rem; align-items: center; gap: 0.6rem; }
+.ns-bar-id { font-family: var(--mono); font-weight: 500; font-size: 0.9rem; }
+.ns-bar-val { font-family: var(--mono); font-size: 0.95rem; font-weight: 500; text-align: right; }
+.ns-bar-track { display: block; height: 1.15rem; background: rgba(4, 40, 26, 0.07); border-radius: 0.3rem; overflow: hidden; }
+.ns-bar { display: block; height: 100%; border-radius: 0.3rem; transform-origin: left; animation: ns-grow 0.9s cubic-bezier(.2,.8,.2,1) both; }
+.ns-bar-chest { background: var(--green); }
+.ns-bar-optical { background: repeating-linear-gradient(135deg, var(--rose) 0 6px, #d4586b 6px 10px); }
+@keyframes ns-grow { from { transform: scaleX(0); } }
+.ns-fig-note { margin: 1.25rem 0 0; font-size: 0.86rem; color: var(--slate); max-width: 56ch; }
+.ns-fig-note a { color: var(--green); font-weight: 600; text-underline-offset: 3px; }
+
+/* The rule: measured vs estimated ledger */
+.ns-rule { margin-top: clamp(3.5rem, 9vw, 7rem); margin-inline: calc(-1 * clamp(1rem, 5vw, 4rem)); padding: clamp(3rem, 8vw, 6rem) clamp(1rem, 5vw, 4rem); background: var(--forest); color: var(--blush); display: grid; gap: clamp(2rem, 5vw, 4rem); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1000px) { .ns-rule { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); align-items: start; } }
+.ns-rule .lp-h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); margin-bottom: 1.25rem; max-width: 18ch; }
+.ns-rule .lp-lead { margin-bottom: 0; }
+.ns-ledger { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+@media (min-width: 640px) { .ns-ledger { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); } }
+.ns-col { border-radius: 1.1rem; padding: 1.25rem; background: #08362a; min-width: 0; }
+.ns-col h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; font-size: 1.05rem; margin: 0 0 1rem; }
+.ns-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.9rem; }
+.ns-col li { display: grid; gap: 0.15rem; }
+.ns-col li strong { font-weight: 600; }
+.ns-col li span { color: rgba(255, 229, 231, 0.78); font-size: 0.95rem; }
+.ns-col-measured { border: 2px solid var(--mint); }
+.ns-col-est { border: 2px dashed #ffc46b; }
+.ns-col .lp-badge-measured { color: var(--mint); background: rgba(94, 224, 160, 0.12); }
+.ns-col .lp-badge-estimated { color: #ffc46b; background: rgba(255, 196, 107, 0.12); }
+
+/* Sources */
+.ns-sources { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.25rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1100px) { .ns-sources { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ns-sources > li:first-child { grid-column: 1 / -1; } }
+.ns-sources > li { display: flex; min-width: 0; }
+.ns-src { flex: 1; background: var(--paper); border: 1px solid var(--line); border-radius: 1.4rem; padding: clamp(1.25rem, 3vw, 2rem); display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.ns-src-tag { margin: 0; font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--green); }
+.ns-src h3 { font-size: clamp(1.25rem, 2.4vw, 1.6rem); line-height: 1.15; letter-spacing: -0.025em; margin: 0; text-wrap: balance; }
+.ns-src-cite { margin: 0 0 0.5rem; color: var(--slate); font-size: 0.92rem; }
+.ns-src h4 { margin: 0.5rem 0 0.35rem; font-family: var(--mono); font-weight: 500; font-size: 0.74rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--forest); }
+.ns-learned { list-style: disc; margin: 0; padding-left: 1.1rem; display: grid; gap: 0.4rem; color: var(--forest); }
+.ns-learned li::marker { color: var(--green); }
+.ns-applied { margin-top: 0.75rem; padding: 0.9rem 1rem; border-left: 4px solid var(--green); background: rgba(0, 122, 57, 0.08); border-radius: 0 0.75rem 0.75rem 0; }
+.ns-applied h4 { margin-top: 0; color: var(--green); }
+.ns-applied p { margin: 0; color: var(--forest); }
+.ns-src-links { margin: auto 0 0; padding-top: 0.9rem; display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; font-size: 0.88rem; }
+.ns-src-links a { color: var(--green); font-weight: 600; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.ns-src-links i, .ns-fig-note i { font-style: normal; }
+
+/* Limits */
+.ns-limits ul { margin: 0 0 2rem; padding: 0; list-style: none; max-width: 52rem; border-top: 1px solid var(--forest); }
+.ns-limits li { padding: 0.85rem 0; border-bottom: 1px solid var(--forest); }
+.ns-ai { margin: 0; font-family: var(--mono); font-size: 0.82rem; color: var(--slate); max-width: 60ch; }
+
+@media (max-width: 480px) {
+  .ns-bars li { grid-template-columns: 2.2rem minmax(0, 1fr) 3.2rem; gap: 0.4rem; }
+  .ns-fig { padding: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) { .ns-bar { animation: none; } }
